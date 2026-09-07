@@ -35,4 +35,4 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ghcr.io/${{ github.repository }}:rbac-16961ef
+          tags: ghcr.io/${{ github.repository }}:rbac-3c802d4
