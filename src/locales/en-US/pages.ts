@@ -324,7 +324,24 @@ export default {
     'Shared address book administrator',
   'pages.roles.preset.strategyMaintainer': 'Strategy maintainer',
   'pages.roles.preset.deviceStrategyAssigner': 'Device strategy assigner',
-  'pages.roles.preset.full': 'Full permissions',
+  'pages.roles.preset.systemAdministrator': 'System administrator',
+  'pages.roles.protectedAccount': 'Protected accounts',
+  'pages.roles.protectedAccountInfo':
+    'Only the super administrator can manage protected accounts.',
+  'pages.roles.ownerOnly': 'Super administrator only',
+  'pages.roles.systemIdentity.ordinary': 'Ordinary user',
+  'pages.roles.systemIdentity.superAdmin': 'Super administrator',
+  'pages.roles.systemIdentity.builtIn': 'Built-in',
+  'pages.roles.systemIdentity.view': 'View',
+  'pages.roles.systemIdentity.ordinarySummary':
+    'Personal address book basic functionality only.',
+  'pages.roles.systemIdentity.superAdminSummary':
+    'Full effective authority for the unique system owner.',
+  'pages.roles.systemIdentity.systemCapabilities':
+    'Role definition, system settings, device-group structure and identity administration',
+  'pages.roles.disableProtectionConfirm': 'Disable protection for this role?',
+  'pages.roles.disableProtectionAffected':
+    '{count} members will become manageable by delegated administrators.',
   'pages.roles.resource.users': 'Users',
   'pages.roles.resource.user_groups': 'User groups',
   'pages.roles.resource.devices': 'Devices',
@@ -364,6 +381,7 @@ export default {
   'pages.roles.permission.strategies.assign': 'Assign strategies',
   'pages.roles.permission.audit.view': 'View audit logs',
   'pages.roles.create': 'Create Role',
+  'pages.roles.view': 'View Role',
   'pages.roles.edit': 'Edit Role',
   'pages.roles.deleteConfirm': 'Are you sure to delete this role?',
   'pages.roles.selectPermissions': 'Select Permissions',
@@ -483,6 +501,35 @@ export default {
     'Select at least one device group for a device-group assignment',
   'pages.users.rolesScopeInfo':
     'Global grants override narrower device-group grants.',
+  'pages.users.protectedAccount': 'Protected account',
+  'pages.users.protectedAccountInfo':
+    'Protected accounts can only be managed by the super administrator.',
+  'pages.users.systemCapabilities': 'System capabilities',
+  'pages.users.systemCapability.roles.create': 'Create role definitions',
+  'pages.users.systemCapability.roles.edit': 'Edit role definitions',
+  'pages.users.systemCapability.roles.delete': 'Delete role definitions',
+  'pages.users.systemCapability.settings.manage': 'Manage system settings',
+  'pages.users.systemCapability.device_groups.manage':
+    'Manage device-group structure',
+  'pages.users.systemCapability.identity_sources.manage':
+    'Manage identity sources',
+  'pages.users.roleEligibility.assign_not_allowed':
+    'You cannot assign this role',
+  'pages.users.roleEligibility.remove_not_allowed':
+    'You cannot remove this role',
+  'pages.users.roleEligibility.protected_role':
+    'Protected roles can only be assigned or removed by the super administrator',
+  'pages.users.roleEligibility.protected_target':
+    'The target account is protected',
+  'pages.users.roleEligibility.self_target': 'You cannot change your own roles',
+  'pages.users.roleEligibility.missing_caller_scope':
+    'Your permission scope is insufficient',
+  'pages.users.roleEligibility.scope_exceeds_caller':
+    'The role scope exceeds your permissions',
+  'pages.users.roleEligibility.missing_permission':
+    'You lack a permission required by this role',
+  'pages.users.roleEligibility.role_grants_roles_assign':
+    'Roles that grant role assignment can only be managed by the super administrator',
   'pages.users.effectiveScope': 'Effective scope',
   'pages.users.strategy': 'Strategy',
   'pages.users.invite': 'Invite User',

@@ -3,6 +3,7 @@ import {
   applyRolePermissionPreset,
   CUSTOM_ROLE_PERMISSION_PRESET_KEY,
   getMatchingRolePermissionPreset,
+  getMatchingRolePermissionPresetForRole,
   ROLE_PERMISSION_PRESETS,
   resolvePresetPermissions,
 } from './rbacPresentation';
@@ -58,7 +59,7 @@ test('defines the seven approved role permission presets in display order', () =
     'sharedAddressBookAdministrator',
     'strategyMaintainer',
     'deviceStrategyAssigner',
-    'full',
+    'systemAdministrator',
   ]);
 });
 
@@ -123,7 +124,7 @@ test('uses the approved least-privilege mapping for each named preset', () => {
         resolvePresetPermissions(
           key as Exclude<
             (typeof ROLE_PERMISSION_PRESETS)[number]['key'],
-            'full'
+            'systemAdministrator'
           >,
           permissionCatalog,
         ),
@@ -132,13 +133,42 @@ test('uses the approved least-privilege mapping for each named preset', () => {
   }
 });
 
-test('full preset selects every real permission currently returned by the API', () => {
+test('system administrator preset selects every real permission currently returned by the API', () => {
   const permissions = resolvePresetPermissions(
-    'full',
+    'systemAdministrator',
     catalog(allPermissionCodes),
   );
 
   expect(permissions).toEqual(allPermissionCodes);
+});
+
+test('system administrator preset is the only preset that enables protection', () => {
+  const system = ROLE_PERMISSION_PRESETS.find(
+    (preset) => preset.key === 'systemAdministrator',
+  );
+  expect(system?.protectedAccount).toBe(true);
+});
+
+test('protected system administrator permissions match the system administrator preset', () => {
+  const permissionCatalog = catalog(allPermissionCodes);
+  const permissions = resolvePresetPermissions(
+    'systemAdministrator',
+    permissionCatalog,
+  );
+  expect(
+    getMatchingRolePermissionPresetForRole(
+      permissions,
+      permissionCatalog,
+      true,
+    ),
+  ).toBe('systemAdministrator');
+  expect(
+    getMatchingRolePermissionPresetForRole(
+      permissions,
+      permissionCatalog,
+      false,
+    ),
+  ).toBe(CUSTOM_ROLE_PERMISSION_PRESET_KEY);
 });
 
 test('derives the selected preset by exact permission-set equality', () => {

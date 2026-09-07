@@ -57,7 +57,12 @@ export const ROLE_PERMISSION_PRESETS = [
     defaultMessage: 'Device strategy assigner',
     permissions: ['devices.view', 'strategies.assign'],
   },
-  { key: 'full', defaultMessage: 'Full permissions', permissions: null },
+  {
+    key: 'systemAdministrator',
+    defaultMessage: 'System administrator',
+    permissions: null,
+    protectedAccount: true,
+  },
 ] as const;
 
 export type RolePermissionPresetKey =
@@ -84,12 +89,15 @@ export function resolvePresetPermissions(
 export function getMatchingRolePermissionPreset(
   selectedCodes: string[],
   catalog: API.PermissionItem[],
+  protectedAccount = false,
 ): RolePermissionPresetSelection {
   if (catalog.length === 0) return CUSTOM_ROLE_PERMISSION_PRESET_KEY;
 
   const available = new Set(catalog.map((permission) => permission.code));
   const selected = new Set(selectedCodes.filter((code) => available.has(code)));
   const preset = ROLE_PERMISSION_PRESETS.find(({ key }) => {
+    const presetProtected = key === 'systemAdministrator';
+    if (presetProtected !== protectedAccount) return false;
     const presetPermissions = resolvePresetPermissions(key, catalog);
     return (
       presetPermissions.length === selected.size &&
@@ -100,6 +108,18 @@ export function getMatchingRolePermissionPreset(
   return preset?.key ?? CUSTOM_ROLE_PERMISSION_PRESET_KEY;
 }
 
+export function getMatchingRolePermissionPresetForRole(
+  selectedCodes: string[],
+  catalog: API.PermissionItem[],
+  protectedAccount: boolean,
+): RolePermissionPresetSelection {
+  return getMatchingRolePermissionPreset(
+    selectedCodes,
+    catalog,
+    protectedAccount,
+  );
+}
+
 export function applyRolePermissionPreset(
   presetKey: RolePermissionPresetSelection,
   selectedCodes: string[],
@@ -108,4 +128,10 @@ export function applyRolePermissionPreset(
   return presetKey === CUSTOM_ROLE_PERMISSION_PRESET_KEY
     ? selectedCodes
     : resolvePresetPermissions(presetKey, catalog);
+}
+
+export function presetEnablesProtection(
+  presetKey: RolePermissionPresetSelection,
+): boolean {
+  return presetKey === 'systemAdministrator';
 }

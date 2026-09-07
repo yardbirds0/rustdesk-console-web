@@ -1,5 +1,6 @@
 declare namespace API {
   type CurrentUser = {
+    guid?: string;
     name?: string;
     display_name?: string;
     email?: string;
@@ -222,6 +223,7 @@ declare namespace API {
     note: string;
     status: number; // -1=未验证, 0=禁用, 1=正常
     is_admin: boolean;
+    is_protected?: boolean;
     third_auth_type?: string;
     strategy_guid?: string;
     strategy_name?: string;
@@ -586,6 +588,8 @@ declare namespace API {
     name: string;
     note: string;
     permissions: string[];
+    protected_account?: boolean;
+    member_count?: number;
     created_at: string;
     updated_at: string;
   };
@@ -594,12 +598,16 @@ declare namespace API {
     name: string;
     note?: string;
     permissions: string[];
+    protected_account?: boolean;
+    confirm_protected_account_change?: boolean;
   };
 
   type UpdateRoleParams = {
     name?: string;
     note?: string;
     permissions?: string[];
+    protected_account?: boolean;
+    confirm_protected_account_change?: boolean;
   };
 
   type PermissionItem = {
@@ -633,6 +641,31 @@ declare namespace API {
     permissions: string[];
     created_at: string;
     updated_at: string;
+  };
+
+  type UserRoleEligibilityReason =
+    | 'assign_not_allowed'
+    | 'remove_not_allowed'
+    | 'protected_role'
+    | 'protected_target'
+    | 'self_target'
+    | 'missing_caller_scope'
+    | 'scope_exceeds_caller';
+
+  type UserRoleEligibility = {
+    guid: string;
+    name: string;
+    protected_account: boolean;
+    assigned: boolean;
+    can_assign: boolean;
+    can_remove: boolean;
+    allowed_scope_types: PermissionScopeType[];
+    assignable_device_groups: Array<Pick<DeviceGroupItem, 'guid' | 'name'>>;
+    reason_code?: UserRoleEligibilityReason | 'missing_permission' | 'role_grants_roles_assign' | null;
+  };
+
+  type UserRoleEligibilityResponse = {
+    data: UserRoleEligibility[];
   };
 
   type UserRolesResponse = {
@@ -692,6 +725,7 @@ declare namespace API {
   type StrategyAssignmentUserItem = {
     guid: string;
     name: string;
+    is_protected?: boolean;
   };
 
   type StrategyAssignmentDeviceGroupItem = {
@@ -707,6 +741,7 @@ declare namespace API {
   type StrategyTargetUserCandidate = {
     guid: string;
     name: string;
+    is_protected?: boolean;
   };
 
   type StrategyTargetCandidateParams = {

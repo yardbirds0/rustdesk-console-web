@@ -49,3 +49,14 @@ export async function deleteRole(guid: string) {
     skipErrorHandler: true,
   });
 }
+
+export async function getRoleProtectionImpact(guid: string) {
+  return request<{
+    guid: string;
+    protected_account: boolean;
+    affected_member_count: number;
+  }>(`/api/roles/${guid}/protection-impact`, {
+    method: 'GET',
+    skipErrorHandler: true,
+  });
+}

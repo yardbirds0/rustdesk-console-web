@@ -51,5 +51,10 @@ export default function access(
     canAuditView,
     canAuditConnectionAccess: canAuditView || canDevicesDisconnect,
     canGroups: isSuperAdmin || hasPermission('user_groups.view'),
+    canRolesView: hasPermission('roles.view'),
+    canRolesAssign:
+      hasPermission('roles.assign') &&
+      hasPermission('roles.view') &&
+      hasPermission('users.view'),
   };
 }

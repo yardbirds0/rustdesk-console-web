@@ -1,20 +1,23 @@
 import {
   DeleteOutlined,
   EditOutlined,
+  EyeOutlined,
   InfoCircleOutlined,
   PlusOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { FormattedMessage, useIntl } from '@umijs/max';
+import { FormattedMessage, useAccess, useIntl } from '@umijs/max';
 import {
   Alert,
   App,
   Button,
+  Card,
   Divider,
   Form,
   Input,
+  List,
   Modal,
   Popconfirm,
   Select,
@@ -32,6 +35,7 @@ import {
   deleteRole,
   getRoleDetail,
   getRoleList,
+  getRoleProtectionImpact,
   updateRole,
 } from '@/services/rustdesk-console/role';
 import { getRequestErrorMessage } from '@/utils/requestError';
@@ -45,20 +49,31 @@ import {
   CUSTOM_ROLE_PERMISSION_PRESET_KEY,
   getMatchingRolePermissionPreset,
   PERSONAL_ADDRESS_BOOK_KEY,
+  presetEnablesProtection,
   ROLE_PERMISSION_PRESETS,
 } from './rbacPresentation';
+
+const PROTECTED_ACCOUNT_KEY = 'builtin.protected-account';
 
 const RoleList: React.FC = () => {
   const intl = useIntl();
   const { message: msgApi } = App.useApp();
+  const access = useAccess();
+  const isOwner = access.isSuperAdmin;
   const actionRef = useRef<ActionType>(null);
   const [form] = Form.useForm<API.CreateRoleParams>();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<API.RoleItem | null>(null);
+  const [readOnlyModal, setReadOnlyModal] = useState(false);
   const [catalog, setCatalog] = useState<API.PermissionItem[]>([]);
   const [checkedKeys, setCheckedKeys] = useState<string[]>([]);
+  const [protectedAccount, setProtectedAccount] = useState(false);
+  const [roleMemberCount, setRoleMemberCount] = useState(0);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [systemIdentity, setSystemIdentity] = useState<
+    'ordinary' | 'superAdmin' | null
+  >(null);
   const [saving, setSaving] = useState(false);
   const detailRequestRef = useRef(0);
 
@@ -91,8 +106,9 @@ const RoleList: React.FC = () => {
     [catalog],
   );
   const selectedPreset = useMemo(
-    () => getMatchingRolePermissionPreset(checkedKeys, catalog),
-    [catalog, checkedKeys],
+    () =>
+      getMatchingRolePermissionPreset(checkedKeys, catalog, protectedAccount),
+    [catalog, checkedKeys, protectedAccount],
   );
 
   const treeData = useMemo<DataNode[]>(() => {
@@ -126,6 +142,28 @@ const RoleList: React.FC = () => {
               }),
             };
           });
+        if (resource === 'users') {
+          children.push({
+            key: PROTECTED_ACCOUNT_KEY,
+            title: (
+              <Space size={6}>
+                <FormattedMessage
+                  id="pages.roles.protectedAccount"
+                  defaultMessage="Protected accounts"
+                />
+                <Tooltip
+                  title={intl.formatMessage({
+                    id: 'pages.roles.protectedAccountInfo',
+                    defaultMessage:
+                      'Members cannot be managed by anyone except the super administrator.',
+                  })}
+                >
+                  <InfoCircleOutlined />
+                </Tooltip>
+              </Space>
+            ),
+          });
+        }
         if (resource === 'address_books') {
           children.unshift({
             key: PERSONAL_ADDRESS_BOOK_KEY,
@@ -161,14 +199,27 @@ const RoleList: React.FC = () => {
     detailRequestRef.current += 1;
     setModalOpen(false);
     setEditingRole(null);
+    setReadOnlyModal(false);
     setCheckedKeys([]);
+    setProtectedAccount(false);
+    setRoleMemberCount(0);
     setDetailLoading(false);
     form.resetFields();
   };
 
+  const openSystemIdentity = (identity: 'ordinary' | 'superAdmin') => {
+    setSystemIdentity(identity);
+    if (identity === 'superAdmin') void loadCatalog();
+  };
+
+  const closeSystemIdentity = () => setSystemIdentity(null);
+
   const openCreate = () => {
     detailRequestRef.current += 1;
     setEditingRole(null);
+    setReadOnlyModal(false);
+    setProtectedAccount(false);
+    setRoleMemberCount(0);
     setCheckedKeys([]);
     setDetailLoading(false);
     form.resetFields();
@@ -176,9 +227,10 @@ const RoleList: React.FC = () => {
     void loadCatalog();
   };
 
-  const openEdit = async (record: API.RoleItem) => {
+  const openEdit = async (record: API.RoleItem, readOnly = false) => {
     const requestId = ++detailRequestRef.current;
     setEditingRole(record);
+    setReadOnlyModal(readOnly);
     setModalOpen(true);
     setDetailLoading(true);
     const loadedCatalog = await loadCatalog();
@@ -187,6 +239,9 @@ const RoleList: React.FC = () => {
       const detail = await getRoleDetail(record.guid);
       if (requestId !== detailRequestRef.current) return;
       form.setFieldsValue({ name: detail.name, note: detail.note || '' });
+      setProtectedAccount(detail.protected_account === true);
+      setRoleMemberCount(detail.member_count || record.member_count || 0);
+      setEditingRole({ ...record, ...detail });
       const validCodes = new Set(
         loadedCatalog.map((permission) => permission.code),
       );
@@ -208,14 +263,55 @@ const RoleList: React.FC = () => {
     }
   };
 
+  const openView = async (record: API.RoleItem) => {
+    await openEdit(record, true);
+  };
+
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      if (readOnlyModal || !isOwner) return;
+      let confirmedProtectionChange = false;
+      let affectedMemberCount = roleMemberCount;
+      if (editingRole?.protected_account && !protectedAccount) {
+        const impact = await getRoleProtectionImpact(editingRole.guid);
+        affectedMemberCount = impact.affected_member_count;
+      }
+      if (
+        editingRole?.protected_account &&
+        !protectedAccount &&
+        affectedMemberCount > 0
+      ) {
+        const confirmed = await new Promise<boolean>((resolve) => {
+          Modal.confirm({
+            title: intl.formatMessage({
+              id: 'pages.roles.disableProtectionConfirm',
+              defaultMessage: 'Disable protection for this role?',
+            }),
+            content: intl.formatMessage(
+              {
+                id: 'pages.roles.disableProtectionAffected',
+                defaultMessage:
+                  '{count} members will become manageable by delegated administrators.',
+              },
+              { count: affectedMemberCount },
+            ),
+            onOk: () => resolve(true),
+            onCancel: () => resolve(false),
+          });
+        });
+        if (!confirmed) return;
+        confirmedProtectionChange = true;
+      }
       setSaving(true);
       const payload: API.CreateRoleParams = {
         name: values.name.trim(),
         note: values.note,
         permissions: checkedKeys.filter((code) => permissionCodes.has(code)),
+        protected_account: protectedAccount,
+        ...(confirmedProtectionChange
+          ? { confirm_protected_account_change: true }
+          : {}),
       };
       if (editingRole) {
         await updateRole(editingRole.guid, payload);
@@ -337,43 +433,84 @@ const RoleList: React.FC = () => {
       fixed: 'right',
       render: (_, record) => (
         <Space size={0} split={<Divider type="vertical" />}>
-          <Button
-            key="edit"
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => void openEdit(record)}
-          >
-            <FormattedMessage id="pages.common.edit" defaultMessage="Edit" />
-          </Button>
-          <Popconfirm
-            title={intl.formatMessage({
-              id: 'pages.roles.deleteConfirm',
-              defaultMessage: 'Are you sure to delete this role?',
-            })}
-            onConfirm={() => void handleDelete(record.guid)}
-            okText={intl.formatMessage({
-              id: 'pages.common.confirm',
-              defaultMessage: 'Yes',
-            })}
-            cancelText={intl.formatMessage({
-              id: 'pages.common.cancel',
-              defaultMessage: 'No',
-            })}
-          >
+          {!isOwner && (
             <Button
-              key="delete"
+              key="view"
               type="link"
               size="small"
-              danger
-              icon={<DeleteOutlined />}
+              icon={<EyeOutlined />}
+              onClick={() => void openView(record)}
             >
-              <FormattedMessage
-                id="pages.common.delete"
-                defaultMessage="Delete"
-              />
+              <FormattedMessage id="pages.roles.view" defaultMessage="View" />
             </Button>
-          </Popconfirm>
+          )}
+          <Tooltip
+            title={
+              !isOwner
+                ? intl.formatMessage({
+                    id: 'pages.roles.ownerOnly',
+                    defaultMessage: 'Super administrator only',
+                  })
+                : undefined
+            }
+          >
+            <span>
+              <Button
+                key="edit"
+                type="link"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => void openEdit(record)}
+                disabled={!isOwner}
+              >
+                <FormattedMessage
+                  id="pages.common.edit"
+                  defaultMessage="Edit"
+                />
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip
+            title={
+              !isOwner
+                ? intl.formatMessage({
+                    id: 'pages.roles.ownerOnly',
+                    defaultMessage: 'Super administrator only',
+                  })
+                : undefined
+            }
+          >
+            <Popconfirm
+              title={intl.formatMessage({
+                id: 'pages.roles.deleteConfirm',
+                defaultMessage: 'Are you sure to delete this role?',
+              })}
+              onConfirm={() => void handleDelete(record.guid)}
+              disabled={!isOwner}
+              okText={intl.formatMessage({
+                id: 'pages.common.confirm',
+                defaultMessage: 'Yes',
+              })}
+              cancelText={intl.formatMessage({
+                id: 'pages.common.cancel',
+                defaultMessage: 'No',
+              })}
+            >
+              <Button
+                key="delete"
+                type="link"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                disabled={!isOwner}
+              >
+                <FormattedMessage
+                  id="pages.common.delete"
+                  defaultMessage="Delete"
+                />
+              </Button>
+            </Popconfirm>
+          </Tooltip>
         </Space>
       ),
     },
@@ -391,6 +528,82 @@ const RoleList: React.FC = () => {
             'Super-administrator access is protected separately and cannot be granted through a role.',
         })}
       />
+      <Space
+        direction="vertical"
+        size="middle"
+        style={{ width: '100%', marginBottom: 16 }}
+      >
+        <Card
+          size="small"
+          title={
+            <Space>
+              <SafetyCertificateOutlined />
+              <FormattedMessage
+                id="pages.roles.systemIdentity.ordinary"
+                defaultMessage="Ordinary user"
+              />
+              <Tag>
+                <FormattedMessage
+                  id="pages.roles.systemIdentity.builtIn"
+                  defaultMessage="Built-in"
+                />
+              </Tag>
+            </Space>
+          }
+          extra={
+            <Button
+              type="link"
+              icon={<EyeOutlined />}
+              onClick={() => openSystemIdentity('ordinary')}
+            >
+              <FormattedMessage
+                id="pages.roles.systemIdentity.view"
+                defaultMessage="View"
+              />
+            </Button>
+          }
+        >
+          <FormattedMessage
+            id="pages.roles.systemIdentity.ordinarySummary"
+            defaultMessage="Personal address book basic functionality only."
+          />
+        </Card>
+        <Card
+          size="small"
+          title={
+            <Space>
+              <SafetyCertificateOutlined />
+              <FormattedMessage
+                id="pages.roles.systemIdentity.superAdmin"
+                defaultMessage="Super administrator"
+              />
+              <Tag>
+                <FormattedMessage
+                  id="pages.roles.systemIdentity.builtIn"
+                  defaultMessage="Built-in"
+                />
+              </Tag>
+            </Space>
+          }
+          extra={
+            <Button
+              type="link"
+              icon={<EyeOutlined />}
+              onClick={() => openSystemIdentity('superAdmin')}
+            >
+              <FormattedMessage
+                id="pages.roles.systemIdentity.view"
+                defaultMessage="View"
+              />
+            </Button>
+          }
+        >
+          <FormattedMessage
+            id="pages.roles.systemIdentity.superAdminSummary"
+            defaultMessage="Full effective authority for the unique system owner."
+          />
+        </Card>
+      </Space>
       <ProTable<API.RoleItem>
         headerTitle={
           <FormattedMessage id="pages.roles.list" defaultMessage="Role List" />
@@ -422,17 +635,32 @@ const RoleList: React.FC = () => {
         scroll={{ x: 900 }}
         search={{ labelWidth: 'auto' }}
         toolBarRender={() => [
-          <Button
-            key="create"
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={openCreate}
+          <Tooltip
+            key="create-tip"
+            title={
+              !isOwner
+                ? intl.formatMessage({
+                    id: 'pages.roles.ownerOnly',
+                    defaultMessage: 'Super administrator only',
+                  })
+                : undefined
+            }
           >
-            <FormattedMessage
-              id="pages.roles.create"
-              defaultMessage="Create Role"
-            />
-          </Button>,
+            <span>
+              <Button
+                key="create"
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={openCreate}
+                disabled={!isOwner}
+              >
+                <FormattedMessage
+                  id="pages.roles.create"
+                  defaultMessage="Create Role"
+                />
+              </Button>
+            </span>
+          </Tooltip>,
         ]}
         options={{
           density: true,
@@ -445,16 +673,34 @@ const RoleList: React.FC = () => {
       <Modal
         title={
           <FormattedMessage
-            id={editingRole ? 'pages.roles.edit' : 'pages.roles.create'}
-            defaultMessage={editingRole ? 'Edit Role' : 'Create Role'}
+            id={
+              readOnlyModal
+                ? 'pages.roles.view'
+                : editingRole
+                  ? 'pages.roles.edit'
+                  : 'pages.roles.create'
+            }
+            defaultMessage={
+              readOnlyModal
+                ? 'View Role'
+                : editingRole
+                  ? 'Edit Role'
+                  : 'Create Role'
+            }
           />
         }
         open={modalOpen}
         onCancel={closeModal}
         onOk={() => void handleSubmit()}
+        footer={readOnlyModal ? null : undefined}
         confirmLoading={saving}
         okButtonProps={{
-          disabled: detailLoading || catalogLoading || catalog.length === 0,
+          disabled:
+            readOnlyModal ||
+            !isOwner ||
+            detailLoading ||
+            catalogLoading ||
+            catalog.length === 0,
         }}
         destroyOnClose
         width={680}
@@ -484,7 +730,7 @@ const RoleList: React.FC = () => {
                 },
               ]}
             >
-              <Input maxLength={255} />
+              <Input maxLength={255} disabled={!isOwner || readOnlyModal} />
             </Form.Item>
             <Form.Item
               name="note"
@@ -492,7 +738,11 @@ const RoleList: React.FC = () => {
                 <FormattedMessage id="pages.roles.note" defaultMessage="Note" />
               }
             >
-              <Input.TextArea rows={3} maxLength={2000} />
+              <Input.TextArea
+                rows={3}
+                maxLength={2000}
+                disabled={!isOwner || readOnlyModal}
+              />
             </Form.Item>
             <Form.Item>
               <Space size={8} wrap={false}>
@@ -510,11 +760,14 @@ const RoleList: React.FC = () => {
                   size="small"
                   value={selectedPreset}
                   style={{ width: 220 }}
-                  onChange={(presetKey) =>
+                  onChange={(presetKey) => {
+                    if (!isOwner) return;
                     setCheckedKeys((current) =>
                       applyRolePermissionPreset(presetKey, current, catalog),
-                    )
-                  }
+                    );
+                    setProtectedAccount(presetEnablesProtection(presetKey));
+                  }}
+                  disabled={!isOwner || readOnlyModal}
                   options={[
                     {
                       value: CUSTOM_ROLE_PERMISSION_PRESET_KEY,
@@ -549,16 +802,26 @@ const RoleList: React.FC = () => {
             >
               <Tree
                 checkable
+                disabled={!isOwner || readOnlyModal}
                 defaultExpandAll
                 height={320}
                 treeData={treeData}
-                checkedKeys={[...checkedKeys, PERSONAL_ADDRESS_BOOK_KEY]}
+                checkedKeys={[
+                  ...checkedKeys,
+                  PERSONAL_ADDRESS_BOOK_KEY,
+                  ...(protectedAccount ? [PROTECTED_ACCOUNT_KEY] : []),
+                ]}
                 onCheck={(keys, info) => {
                   const values = Array.isArray(keys) ? keys : keys.checked;
                   const selected = values
                     .map(String)
                     .filter((code) => permissionCodes.has(code));
                   const changedCode = String(info.node.key);
+                  if (changedCode === PROTECTED_ACCOUNT_KEY) {
+                    if (isOwner) setProtectedAccount(info.checked);
+                    return;
+                  }
+                  if (!isOwner || readOnlyModal) return;
                   setCheckedKeys(
                     info.checked
                       ? addRequiredPermissions(selected, catalog)
@@ -572,6 +835,63 @@ const RoleList: React.FC = () => {
               />
             </Form.Item>
           </Form>
+        )}
+      </Modal>
+      <Modal
+        title={
+          <FormattedMessage
+            id={
+              systemIdentity === 'ordinary'
+                ? 'pages.roles.systemIdentity.ordinary'
+                : 'pages.roles.systemIdentity.superAdmin'
+            }
+            defaultMessage={
+              systemIdentity === 'ordinary'
+                ? 'Ordinary user'
+                : 'Super administrator'
+            }
+          />
+        }
+        open={systemIdentity !== null}
+        onCancel={closeSystemIdentity}
+        footer={null}
+        destroyOnClose
+      >
+        {systemIdentity === 'superAdmin' && catalogLoading ? (
+          <div style={{ textAlign: 'center', padding: 24 }}>
+            <Spin />
+          </div>
+        ) : (
+          <List
+            size="small"
+            dataSource={
+              systemIdentity === 'ordinary'
+                ? [
+                    intl.formatMessage({
+                      id: 'pages.roles.personalAddressBook',
+                      defaultMessage: 'Personal address book',
+                    }),
+                    intl.formatMessage({
+                      id: 'pages.roles.basicFunction',
+                      defaultMessage: 'Basic feature',
+                    }),
+                  ]
+                : [
+                    ...catalog.map((permission) =>
+                      intl.formatMessage({
+                        id: `pages.roles.permission.${permission.code}`,
+                        defaultMessage: permission.name,
+                      }),
+                    ),
+                    intl.formatMessage({
+                      id: 'pages.roles.systemIdentity.systemCapabilities',
+                      defaultMessage:
+                        'Role definition, system settings, device-group structure and identity administration',
+                    }),
+                  ]
+            }
+            renderItem={(item) => <List.Item>{item}</List.Item>}
+          />
         )}
       </Modal>
     </PageContainer>

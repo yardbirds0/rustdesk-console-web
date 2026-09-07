@@ -116,7 +116,7 @@ export default [
     path: '/roles',
     name: 'roles',
     icon: 'audit',
-    access: 'canAdmin',
+    access: 'canRolesView',
     component: './roles',
   },
   {

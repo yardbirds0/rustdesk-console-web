@@ -11,13 +11,20 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
 } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   assignStrategy,
-  getStrategyTargetDeviceGroupList,
   getStrategyAssignments,
   getStrategyTargetCandidates,
+  getStrategyTargetDeviceGroupList,
   unassignStrategy,
 } from '@/services/rustdesk-console';
 import {
@@ -33,6 +40,7 @@ interface AssignModalProps {
   record: API.StrategyItem | null;
   canAssignUsers: boolean;
   onSuccess: () => void;
+  isSuperAdmin?: boolean;
 }
 
 const targetTypeOptions: { label: React.ReactNode; value: TargetType }[] = [
@@ -72,6 +80,7 @@ interface AssignedItem {
   guid: string;
   name: string;
   extra?: string;
+  isProtected?: boolean;
 }
 
 const AssignModal: React.FC<AssignModalProps> = ({
@@ -80,6 +89,7 @@ const AssignModal: React.FC<AssignModalProps> = ({
   record,
   canAssignUsers,
   onSuccess,
+  isSuperAdmin = false,
 }) => {
   const intl = useIntl();
   const { message: msgApi } = App.useApp();
@@ -100,6 +110,8 @@ const AssignModal: React.FC<AssignModalProps> = ({
 
   const [assignedItems, setAssignedItems] = useState<AssignedItem[]>([]);
   const [assignedLoading, setAssignedLoading] = useState(false);
+  const assignedRequestVersionRef = useRef(0);
+  const optionsRequestVersionRef = useRef(0);
   const assignableTargetTypes = useMemo(
     () =>
       getAssignableStrategyTargetTypes({
@@ -109,7 +121,11 @@ const AssignModal: React.FC<AssignModalProps> = ({
   );
 
   const loadAssignedTargets = useCallback(async () => {
-    if (!open || !record) return;
+    const requestVersion = ++assignedRequestVersionRef.current;
+    if (!open || !record) {
+      setAssignedItems([]);
+      return;
+    }
     setAssignedLoading(true);
     try {
       const [deviceResult, userResult, groupResult] = await Promise.all([
@@ -131,6 +147,7 @@ const AssignModal: React.FC<AssignModalProps> = ({
           pageSize: ASSIGNMENT_PAGE_SIZE,
         }),
       ]);
+      if (requestVersion !== assignedRequestVersionRef.current) return;
 
       const items: AssignedItem[] = [];
 
@@ -147,6 +164,7 @@ const AssignModal: React.FC<AssignModalProps> = ({
           type: 'user',
           guid: user.guid,
           name: user.name,
+          isProtected: user.is_protected,
         });
       });
 
@@ -160,6 +178,7 @@ const AssignModal: React.FC<AssignModalProps> = ({
 
       setAssignedItems(items);
     } catch {
+      if (requestVersion !== assignedRequestVersionRef.current) return;
       msgApi.error(
         intl.formatMessage({
           id: 'pages.strategies.loadAssignedFailed',
@@ -167,7 +186,8 @@ const AssignModal: React.FC<AssignModalProps> = ({
         }),
       );
     } finally {
-      setAssignedLoading(false);
+      if (requestVersion === assignedRequestVersionRef.current)
+        setAssignedLoading(false);
     }
   }, [canAssignUsers, open, record, intl, msgApi]);
 
@@ -182,6 +202,11 @@ const AssignModal: React.FC<AssignModalProps> = ({
   }, [assignableTargetTypes, open, targetType]);
 
   useEffect(() => {
+    const requestVersion = ++optionsRequestVersionRef.current;
+    setDeviceList([]);
+    setUserList([]);
+    setDeviceGroupList([]);
+    setSelectedGuids([]);
     if (!open || !assignableTargetTypes.includes(targetType)) return;
     setOptionsLoading(true);
     const loadOptions = async () => {
@@ -193,6 +218,7 @@ const AssignModal: React.FC<AssignModalProps> = ({
               current: 1,
               pageSize: 200,
             });
+            if (requestVersion !== optionsRequestVersionRef.current) return;
             setDeviceList(result.data);
             break;
           }
@@ -202,6 +228,7 @@ const AssignModal: React.FC<AssignModalProps> = ({
               current: 1,
               pageSize: 200,
             });
+            if (requestVersion !== optionsRequestVersionRef.current) return;
             setUserList(result.data);
             break;
           }
@@ -210,11 +237,13 @@ const AssignModal: React.FC<AssignModalProps> = ({
               current: 1,
               pageSize: 200,
             });
+            if (requestVersion !== optionsRequestVersionRef.current) return;
             setDeviceGroupList(result.data);
             break;
           }
         }
       } catch {
+        if (requestVersion !== optionsRequestVersionRef.current) return;
         msgApi.error(
           intl.formatMessage({
             id: 'pages.strategies.loadTargetsFailed',
@@ -222,7 +251,8 @@ const AssignModal: React.FC<AssignModalProps> = ({
           }),
         );
       } finally {
-        setOptionsLoading(false);
+        if (requestVersion === optionsRequestVersionRef.current)
+          setOptionsLoading(false);
       }
     };
     loadOptions();
@@ -230,6 +260,32 @@ const AssignModal: React.FC<AssignModalProps> = ({
 
   const handleAssign = async () => {
     if (!record || selectedGuids.length === 0) return;
+    if (
+      targetType === 'user' &&
+      !isSuperAdmin &&
+      selectedGuids.some((guid) =>
+        userList.some(
+          (user) => user.guid === guid && user.is_protected === true,
+        ),
+      )
+    ) {
+      msgApi.error(
+        intl.formatMessage({
+          id: 'pages.users.protectedAccountInfo',
+          defaultMessage:
+            'Protected accounts can only be managed by the super administrator.',
+        }),
+      );
+      setSelectedGuids((current) =>
+        current.filter(
+          (guid) =>
+            !userList.some(
+              (user) => user.guid === guid && user.is_protected === true,
+            ),
+        ),
+      );
+      return;
+    }
     setAssignLoading(true);
     try {
       const result = await assignStrategy(record.guid, {
@@ -277,6 +333,25 @@ const AssignModal: React.FC<AssignModalProps> = ({
 
   const handleUnassign = async (tType: TargetType, targetGuid: string) => {
     if (!record) return;
+    if (
+      tType === 'user' &&
+      !isSuperAdmin &&
+      assignedItems.some(
+        (item) =>
+          item.type === 'user' &&
+          item.guid === targetGuid &&
+          item.isProtected === true,
+      )
+    ) {
+      msgApi.error(
+        intl.formatMessage({
+          id: 'pages.users.protectedAccountInfo',
+          defaultMessage:
+            'Protected accounts can only be managed by the super administrator.',
+        }),
+      );
+      return;
+    }
     try {
       const result = await unassignStrategy(record.guid, {
         target_type: tType,
@@ -320,6 +395,15 @@ const AssignModal: React.FC<AssignModalProps> = ({
         return userList.map((u) => ({
           value: u.guid,
           label: u.name,
+          disabled: !isSuperAdmin && u.is_protected === true,
+          title:
+            !isSuperAdmin && u.is_protected === true
+              ? intl.formatMessage({
+                  id: 'pages.users.protectedAccountInfo',
+                  defaultMessage:
+                    'Protected accounts can only be managed by the super administrator.',
+                })
+              : undefined,
         }));
       case 'device_group':
         return deviceGroupList.map((g) => ({
@@ -411,12 +495,27 @@ const AssignModal: React.FC<AssignModalProps> = ({
                 defaultMessage: 'No',
               })}
             >
-              <Button
-                type="text"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-              />
+              <Tooltip
+                title={
+                  !isSuperAdmin && item.isProtected === true
+                    ? intl.formatMessage({
+                        id: 'pages.users.protectedAccountInfo',
+                        defaultMessage:
+                          'Protected accounts can only be managed by the super administrator.',
+                      })
+                    : undefined
+                }
+              >
+                <span>
+                  <Button
+                    type="text"
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    disabled={!isSuperAdmin && item.isProtected === true}
+                  />
+                </span>
+              </Tooltip>
             </Popconfirm>
           </div>
         ))}

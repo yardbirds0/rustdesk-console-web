@@ -21,3 +21,10 @@ export async function replaceUserRoles(
     skipErrorHandler: true,
   });
 }
+
+export async function getUserRoleEligibility(userGuid: string) {
+  return request<API.UserRoleEligibilityResponse>(
+    `/api/users/${userGuid}/roles/eligibility`,
+    { method: 'GET', skipErrorHandler: true },
+  );
+}

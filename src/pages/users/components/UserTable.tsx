@@ -1,8 +1,8 @@
+import { PlusOutlined, SelectOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { FormattedMessage } from '@umijs/max';
 import { Button } from 'antd';
-import { PlusOutlined, SelectOutlined } from '@ant-design/icons';
 import React from 'react';
 import { getAdminUserList } from '@/services/rustdesk-console/user';
 import BatchActionsBar from './BatchActionsBar';
@@ -13,6 +13,7 @@ interface UserTableProps {
   actionRef: React.MutableRefObject<ActionType | null>;
   selectedRowKeys: React.Key[];
   selectedRows: API.UserItem[];
+  selectionBlocked: boolean;
   onSelectionChange: (keys: React.Key[], rows: API.UserItem[]) => void;
   isSuperAdmin: boolean;
   canUsersCreate: boolean;
@@ -41,6 +42,7 @@ const UserTable: React.FC<UserTableProps> = ({
   actionRef,
   selectedRowKeys,
   selectedRows,
+  selectionBlocked,
   onSelectionChange,
   isSuperAdmin,
   canUsersCreate,
@@ -80,7 +82,9 @@ const UserTable: React.FC<UserTableProps> = ({
               selectedRowKeys,
               onChange: (keys, rows) => onSelectionChange(keys, rows),
               getCheckboxProps: (record) => ({
-                disabled: !isSuperAdmin && record.is_admin,
+                disabled:
+                  !isSuperAdmin &&
+                  (record.is_admin || record.is_protected === true),
               }),
             }
           : undefined
@@ -97,6 +101,7 @@ const UserTable: React.FC<UserTableProps> = ({
             batchStatusUpdating={batchStatusUpdating}
             batchForceLoggingOut={batchForceLoggingOut}
             selectedRowCount={selectedRows.length}
+            hasUnmanageableSelection={selectionBlocked}
             onDestinationChange={onDestinationChange}
             onBatchMove={onBatchMove}
             onBatchEnable={onBatchEnable}
@@ -116,6 +121,7 @@ const UserTable: React.FC<UserTableProps> = ({
             batchStatusUpdating={batchStatusUpdating}
             batchForceLoggingOut={batchForceLoggingOut}
             selectedRowCount={selectedRows.length}
+            hasUnmanageableSelection={selectionBlocked}
             onDestinationChange={onDestinationChange}
             onBatchMove={onBatchMove}
             onBatchEnable={onBatchEnable}

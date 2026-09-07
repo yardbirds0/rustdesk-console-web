@@ -1,6 +1,6 @@
 import type { ActionType } from '@ant-design/pro-components';
 import { PageContainer } from '@ant-design/pro-components';
-import { FormattedMessage, useAccess, useIntl } from '@umijs/max';
+import { FormattedMessage, useAccess, useIntl, useModel } from '@umijs/max';
 import { App, Form } from 'antd';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -17,16 +17,16 @@ import {
   getAllUserGroups,
   moveUsersToGroup,
 } from '@/services/rustdesk-console/userGroup';
-import type { UserListProps } from './types';
 import CreateUserModal from './components/CreateUserModal';
-import InviteUserModal from './components/InviteUserModal';
 import EditUserModal from './components/EditUserModal';
-import SecurityModal from './components/SecurityModal';
-import MoveUserModal from './components/MoveUserModal';
 import ImportUsersModal from './components/ImportUsersModal';
-import UserTable from './components/UserTable';
+import InviteUserModal from './components/InviteUserModal';
+import MoveUserModal from './components/MoveUserModal';
+import SecurityModal from './components/SecurityModal';
 import { useUserColumns } from './components/UserColumns';
 import UserRolesModal from './components/UserRolesModal';
+import UserTable from './components/UserTable';
+import type { UserListProps } from './types';
 import {
   buildCreateUserPayload,
   buildInviteUserPayload,
@@ -41,6 +41,8 @@ const UserList: React.FC<UserListProps> = ({
   const intl = useIntl();
   const { message: msgApi } = App.useApp();
   const access = useAccess();
+  const { initialState } = useModel('@@initialState');
+  const currentUserGuid = initialState?.currentUser?.guid;
 
   const actionRef = useRef<ActionType>(null);
 
@@ -57,6 +59,7 @@ const UserList: React.FC<UserListProps> = ({
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [selectedRows, setSelectedRows] = useState<API.UserItem[]>([]);
+  const [selectionBlocked, setSelectionBlocked] = useState(false);
   const [batchStatusUpdating, setBatchStatusUpdating] = useState(false);
   const [batchForceLoggingOut, setBatchForceLoggingOut] = useState(false);
   const [userGroups, setUserGroups] = useState<API.UserGroupItem[]>([]);
@@ -98,7 +101,17 @@ const UserList: React.FC<UserListProps> = ({
   }, [userGroupGuid]);
 
   const handleMove = async (targetGuid: string, userGuids: string[]) => {
-    if (!targetGuid || userGuids.length === 0) return;
+    if (
+      !targetGuid ||
+      userGuids.length === 0 ||
+      (!access.isSuperAdmin &&
+        selectedRows.some((row) => row.is_admin || row.is_protected === true))
+    ) {
+      setSelectedRowKeys([]);
+      setSelectedRows([]);
+      setSelectionBlocked(false);
+      return;
+    }
     setMoving(true);
     try {
       const result = await moveUsersToGroup(targetGuid, userGuids);
@@ -290,7 +303,7 @@ const UserList: React.FC<UserListProps> = ({
   };
 
   const handleBatchEnable = async () => {
-    if (selectedRows.length === 0) return;
+    if (selectedRows.length === 0 || selectionBlocked) return;
     setBatchStatusUpdating(true);
     try {
       const userGuids = selectedRows.map((row) => row.guid);
@@ -336,7 +349,7 @@ const UserList: React.FC<UserListProps> = ({
   };
 
   const handleBatchDisable = async () => {
-    if (selectedRows.length === 0) return;
+    if (selectedRows.length === 0 || selectionBlocked) return;
     setBatchStatusUpdating(true);
     try {
       const userGuids = selectedRows.map((row) => row.guid);
@@ -382,7 +395,7 @@ const UserList: React.FC<UserListProps> = ({
   };
 
   const handleBatchForceLogout = async () => {
-    if (selectedRows.length === 0) return;
+    if (selectedRows.length === 0 || selectionBlocked) return;
     setBatchForceLoggingOut(true);
     try {
       const userGuids = selectedRows.map((row) => row.guid);
@@ -453,6 +466,10 @@ const UserList: React.FC<UserListProps> = ({
     canForceLogout: access.canUsersForceLogout,
     canDelete: access.canUsersDelete,
     canMove: access.canUserGroupsMembership,
+    canRolesAssign: access.canRolesAssign,
+    canRolesView: access.canRolesView,
+    canUsersView: access.canUsersView,
+    currentUserGuid,
     onEdit: openEditModal,
     onRoles: openRolesModal,
     onSecurity: openSecurityModal,
@@ -479,10 +496,18 @@ const UserList: React.FC<UserListProps> = ({
         actionRef={actionRef}
         selectedRowKeys={selectedRowKeys}
         selectedRows={selectedRows}
-        onSelectionChange={(keys, rows) => {
-          setSelectedRowKeys(keys);
-          setSelectedRows(rows);
+        onSelectionChange={(_keys, rows) => {
+          const manageableRows = access.isSuperAdmin
+            ? rows
+            : rows.filter((row) => !row.is_admin && row.is_protected !== true);
+          setSelectedRowKeys(manageableRows.map((row) => row.guid));
+          setSelectedRows(manageableRows);
+          setSelectionBlocked(
+            !access.isSuperAdmin &&
+              rows.some((row) => row.is_admin || row.is_protected === true),
+          );
         }}
+        selectionBlocked={selectionBlocked}
         isSuperAdmin={access.isSuperAdmin}
         canUsersCreate={access.canUsersCreate}
         canUsersStatus={access.canUsersStatus}
@@ -595,6 +620,13 @@ const UserList: React.FC<UserListProps> = ({
           if (!open) setEditingUser(null);
         }}
         onSuccess={() => actionRef.current?.reload()}
+        readOnly={access.isSuperAdmin && editingUser?.is_admin === true}
+        canManageTarget={
+          access.isSuperAdmin ||
+          (access.canRolesAssign &&
+            editingUser?.is_protected !== true &&
+            editingUser?.guid !== currentUserGuid)
+        }
       />
     </PageContainer>
   );
