@@ -45,10 +45,10 @@ export async function getCustomAddressBooks(params?: {
 
 export async function getAllCustomAddressBooks() {
   const first = await getCustomAddressBooks({ current: 1, pageSize: 100 });
-  const profiles = [...(first.data || [])];
+  const profiles = [...first.data];
   for (let current = 2; profiles.length < first.total; current += 1) {
     const page = await getCustomAddressBooks({ current, pageSize: 100 });
-    if (!page.data?.length) break;
+    if (!page.data.length) break;
     profiles.push(...page.data);
   }
   return profiles;
@@ -106,6 +106,13 @@ export async function getWebSharedAddressBooks(
       ...(options || {}),
     },
   );
+}
+
+export async function getWebSharedAddressBook(guid: string) {
+  return request<API.SharedAddressBook>(`/api/ab/shared/${guid}/access`, {
+    method: 'GET',
+    skipErrorHandler: true,
+  });
 }
 
 export async function updateSharedAddressBook(data: API.UpdateSharedAddressBookParams) {
@@ -194,13 +201,20 @@ export async function getRules(params: {
 
 export async function getAllRules(ab: string) {
   const first = await getRules({ ab, current: 1, pageSize: 100 });
-  const rules = [...(first.data || [])];
+  const rules = [...first.data];
   for (let current = 2; rules.length < first.total; current += 1) {
     const page = await getRules({ ab, current, pageSize: 100 });
-    if (!page.data?.length) break;
+    if (!page.data.length) break;
     rules.push(...page.data);
   }
   return rules;
+}
+
+export async function getAddressBookShareCandidates(guid: string) {
+  return request<API.AddressBookShareCandidates>(
+    `/api/ab/shared/${guid}/share-candidates`,
+    { method: 'GET' },
+  );
 }
 
 export async function deleteRules(data: string[]) {

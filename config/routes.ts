@@ -26,12 +26,14 @@ export default [
     path: '/dashboard',
     name: 'dashboard',
     icon: 'dashboard',
+    access: 'canAdmin',
     component: './dashboard',
   },
   {
     path: '/devices',
     name: 'devices',
     icon: 'desktop',
+    access: 'canDevicesView',
     component: './devices',
   },
   {
@@ -67,7 +69,7 @@ export default [
     path: '/groups',
     name: 'groups',
     icon: 'team',
-    access: 'canAdmin',
+    access: 'canGroups',
     routes: [
       {
         path: '/groups',
@@ -77,11 +79,13 @@ export default [
         name: 'user',
         icon: 'user',
         path: '/groups/user',
+        access: 'canUserGroupsView',
         component: './groups/user',
       },
       {
         name: 'user',
         path: '/groups/user/:guid',
+        access: 'canUserGroupsView',
         component: './groups/user/detail',
         hideInMenu: true,
       },
@@ -89,11 +93,13 @@ export default [
         name: 'device',
         icon: 'device',
         path: '/groups/device',
+        access: 'canAdmin',
         component: './groups/device/list',
       },
       {
         name: 'device',
         path: '/groups/device/:guid',
+        access: 'canAdmin',
         component: './groups/device/detail',
         hideInMenu: true,
       },
@@ -103,7 +109,7 @@ export default [
     path: '/users',
     name: 'users',
     icon: 'user',
-    access: 'canAdmin',
+    access: 'canUsersView',
     component: './users',
   },
   {
@@ -112,13 +118,12 @@ export default [
     icon: 'audit',
     access: 'canAdmin',
     component: './roles',
-    hideInMenu: true,
   },
   {
     path: '/audits',
     name: 'audits',
     icon: 'FileSearchOutlined',
-    access: 'canAdmin',
+    access: 'canAuditConnectionAccess',
     routes: [
       {
         path: '/audits',
@@ -128,24 +133,28 @@ export default [
         name: 'conn',
         icon: 'link',
         path: '/audits/conn',
+        access: 'canAuditConnectionAccess',
         component: './audits/conn',
       },
       {
         name: 'file',
         icon: 'file',
         path: '/audits/file',
+        access: 'canAuditView',
         component: './audits/file',
       },
       {
         name: 'alarm',
         icon: 'alert',
         path: '/audits/alarm',
+        access: 'canAuditView',
         component: './audits/alarm',
       },
       {
         name: 'console',
         icon: 'code',
         path: '/audits/console',
+        access: 'canAuditView',
         component: './audits/console',
         hideInMenu: true,
       },
@@ -155,7 +164,7 @@ export default [
     path: '/strategy',
     name: 'strategies',
     icon: 'solution',
-    access: 'canAdmin',
+    access: 'canStrategiesAccess',
     component: './strategy',
   },
   {
@@ -203,7 +212,7 @@ export default [
   },
   {
     path: '/',
-    redirect: '/dashboard',
+    redirect: '/address-book/personal',
   },
   {
     component: '404',

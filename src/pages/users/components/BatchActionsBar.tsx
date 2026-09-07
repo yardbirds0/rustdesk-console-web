@@ -18,6 +18,8 @@ interface BatchActionsBarProps {
   batchStatusUpdating: boolean;
   batchForceLoggingOut: boolean;
   selectedRowCount: number;
+  canUsersStatus: boolean;
+  canUsersForceLogout: boolean;
   onDestinationChange: (guid: string | undefined) => void;
   onBatchMove: () => void;
   onBatchEnable: () => void;
@@ -35,6 +37,8 @@ const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
   batchStatusUpdating,
   batchForceLoggingOut,
   selectedRowCount,
+  canUsersStatus,
+  canUsersForceLogout,
   onDestinationChange,
   onBatchMove,
   onBatchEnable,
@@ -84,7 +88,8 @@ const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
 
   return (
     <Space size={16}>
-      <Popconfirm
+      {canUsersStatus && (
+        <Popconfirm
         title={
           <FormattedMessage
             id="pages.users.batchEnableConfirm"
@@ -112,8 +117,10 @@ const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
             defaultMessage="Batch Enable"
           />
         </Button>
-      </Popconfirm>
-      <Popconfirm
+        </Popconfirm>
+      )}
+      {canUsersStatus && (
+        <Popconfirm
         title={
           <FormattedMessage
             id="pages.users.batchDisableConfirm"
@@ -141,8 +148,10 @@ const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
             defaultMessage="Batch Disable"
           />
         </Button>
-      </Popconfirm>
-      <Popconfirm
+        </Popconfirm>
+      )}
+      {canUsersForceLogout && (
+        <Popconfirm
         title={
           <FormattedMessage
             id="pages.users.batchForceLogoutConfirm"
@@ -170,7 +179,8 @@ const BatchActionsBar: React.FC<BatchActionsBarProps> = ({
             defaultMessage="Batch Force Logout"
           />
         </Button>
-      </Popconfirm>
+        </Popconfirm>
+      )}
     </Space>
   );
 };

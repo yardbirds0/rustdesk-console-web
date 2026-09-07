@@ -14,6 +14,11 @@ interface UserTableProps {
   selectedRowKeys: React.Key[];
   selectedRows: API.UserItem[];
   onSelectionChange: (keys: React.Key[], rows: API.UserItem[]) => void;
+  isSuperAdmin: boolean;
+  canUsersCreate: boolean;
+  canUsersStatus: boolean;
+  canUsersForceLogout: boolean;
+  canUserGroupsMembership: boolean;
   userGroups: API.UserGroupItem[];
   userGroupsLoading: boolean;
   destinationGuid: string | undefined;
@@ -37,6 +42,11 @@ const UserTable: React.FC<UserTableProps> = ({
   selectedRowKeys,
   selectedRows,
   onSelectionChange,
+  isSuperAdmin,
+  canUsersCreate,
+  canUsersStatus,
+  canUsersForceLogout,
+  canUserGroupsMembership,
   userGroups,
   userGroupsLoading,
   destinationGuid,
@@ -63,10 +73,18 @@ const UserTable: React.FC<UserTableProps> = ({
       }}
       actionRef={actionRef}
       rowKey="guid"
-      rowSelection={{
-        selectedRowKeys,
-        onChange: (keys, rows) => onSelectionChange(keys, rows),
-      }}
+      rowSelection={
+        (userGroupGuid && canUserGroupsMembership) ||
+        (!userGroupGuid && (canUsersStatus || canUsersForceLogout))
+          ? {
+              selectedRowKeys,
+              onChange: (keys, rows) => onSelectionChange(keys, rows),
+              getCheckboxProps: (record) => ({
+                disabled: !isSuperAdmin && record.is_admin,
+              }),
+            }
+          : undefined
+      }
       tableAlertOptionRender={() =>
         userGroupGuid ? (
           <BatchActionsBar
@@ -84,6 +102,8 @@ const UserTable: React.FC<UserTableProps> = ({
             onBatchEnable={onBatchEnable}
             onBatchDisable={onBatchDisable}
             onBatchForceLogout={onBatchForceLogout}
+            canUsersStatus={canUsersStatus}
+            canUsersForceLogout={canUsersForceLogout}
           />
         ) : (
           <BatchActionsBar
@@ -101,6 +121,8 @@ const UserTable: React.FC<UserTableProps> = ({
             onBatchEnable={onBatchEnable}
             onBatchDisable={onBatchDisable}
             onBatchForceLogout={onBatchForceLogout}
+            canUsersStatus={canUsersStatus}
+            canUsersForceLogout={canUsersForceLogout}
           />
         )
       }
@@ -122,13 +144,13 @@ const UserTable: React.FC<UserTableProps> = ({
           user_group_guid: userGroupGuid,
         });
         return {
-          data: result.data || [],
-          total: result.total || 0,
+          data: result.data,
+          total: result.total,
           success: true,
         };
       }}
       columns={
-        userGroupGuid
+        userGroupGuid && canUserGroupsMembership
           ? columns.filter((col) => col.dataIndex !== 'user_group_name')
           : columns
       }
@@ -144,7 +166,7 @@ const UserTable: React.FC<UserTableProps> = ({
       }}
       scroll={{ x: 'max-content' }}
       toolBarRender={() =>
-        userGroupGuid
+        userGroupGuid && canUserGroupsMembership
           ? [
               <Button
                 key="import"
@@ -157,29 +179,31 @@ const UserTable: React.FC<UserTableProps> = ({
                 />
               </Button>,
             ]
-          : [
-              <Button
-                key="create"
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={onOpenCreate}
-              >
-                <FormattedMessage
-                  id="pages.users.create"
-                  defaultMessage="Create"
-                />
-              </Button>,
-              <Button
-                key="invite"
-                icon={<PlusOutlined />}
-                onClick={onOpenInvite}
-              >
-                <FormattedMessage
-                  id="pages.users.invite"
-                  defaultMessage="Invite"
-                />
-              </Button>,
-            ]
+          : !userGroupGuid && canUsersCreate
+            ? [
+                <Button
+                  key="create"
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={onOpenCreate}
+                >
+                  <FormattedMessage
+                    id="pages.users.create"
+                    defaultMessage="Create"
+                  />
+                </Button>,
+                <Button
+                  key="invite"
+                  icon={<PlusOutlined />}
+                  onClick={onOpenInvite}
+                >
+                  <FormattedMessage
+                    id="pages.users.invite"
+                    defaultMessage="Invite"
+                  />
+                </Button>,
+              ]
+            : []
       }
       options={{
         density: true,

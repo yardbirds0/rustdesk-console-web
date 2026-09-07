@@ -16,29 +16,37 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   addRule,
   deleteRules,
+  getAddressBookShareCandidates,
   getAllRules,
   updateRule,
 } from '@/services/rustdesk-console/addressBook';
-import { getAllUserGroups } from '@/services/rustdesk-console/userGroup';
-import { getAdminUserList } from '@/services/rustdesk-console/user';
 
 type ShareType = 'everyone' | 'user' | 'group';
 
 interface ShareAccessModalProps {
   open: boolean;
+  mode: 'view' | 'manage';
   addressBook: API.SharedAddressBook | null;
   onOpenChange: (open: boolean) => void;
 }
 
+const formatUserName = (user: { name: string; display_name?: string }) =>
+  user.display_name && user.display_name !== user.name
+    ? `${user.display_name} (${user.name})`
+    : user.name;
+
 const ShareAccessModal: React.FC<ShareAccessModalProps> = ({
   open,
+  mode,
   addressBook,
   onOpenChange,
 }) => {
   const intl = useIntl();
   const { message: msgApi } = App.useApp();
-  const [groups, setGroups] = useState<API.UserGroupItem[]>([]);
-  const [users, setUsers] = useState<API.UserItem[]>([]);
+  const [groups, setGroups] = useState<API.AddressBookShareCandidateGroup[]>(
+    [],
+  );
+  const [users, setUsers] = useState<API.AddressBookShareCandidateUser[]>([]);
   const [rules, setRules] = useState<API.RuleItem[]>([]);
   const [shareType, setShareType] = useState<ShareType>('group');
   const [selectedGroup, setSelectedGroup] = useState<string>();
@@ -105,14 +113,17 @@ const ShareAccessModal: React.FC<ShareAccessModalProps> = ({
     if (!open || !addressBook) return;
     setLoading(true);
     try {
-      const [groupList, userList, result] = await Promise.all([
-        getAllUserGroups(),
-        getAdminUserList({ current: 1, pageSize: 1000 }),
-        getAllRules(addressBook.guid),
-      ]);
-      setGroups(groupList);
-      setUsers(userList.data || []);
-      setRules(result);
+      if (mode === 'manage') {
+        const [candidates, result] = await Promise.all([
+          getAddressBookShareCandidates(addressBook.guid),
+          getAllRules(addressBook.guid),
+        ]);
+        setGroups(candidates.groups);
+        setUsers(candidates.users);
+        setRules(result);
+      } else {
+        setRules(await getAllRules(addressBook.guid));
+      }
     } catch {
       msgApi.error(
         intl.formatMessage({
@@ -123,7 +134,7 @@ const ShareAccessModal: React.FC<ShareAccessModalProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [open, addressBook?.guid]);
+  }, [open, addressBook?.guid, mode]);
 
   useEffect(() => {
     void load();
@@ -235,31 +246,25 @@ const ShareAccessModal: React.FC<ShareAccessModalProps> = ({
     [groups],
   );
   const userNames = useMemo(
-    () =>
-      new Map(
-        users.map((user) => [
-          user.guid,
-          user.display_name ? `${user.display_name} (${user.name})` : user.name,
-        ]),
-      ),
+    () => new Map(users.map((user) => [user.guid, formatUserName(user)])),
     [users],
   );
 
   const assignedGroups = useMemo(
     () =>
       new Set(
-        rules
-          .filter((rule) => rule.ruleType === 'group' && rule.group)
-          .map((rule) => rule.group!),
+        rules.flatMap((rule) =>
+          rule.ruleType === 'group' && rule.group ? [rule.group] : [],
+        ),
       ),
     [rules],
   );
   const assignedUsers = useMemo(
     () =>
       new Set(
-        rules
-          .filter((rule) => rule.ruleType === 'user' && rule.user)
-          .map((rule) => rule.user!),
+        rules.flatMap((rule) =>
+          rule.ruleType === 'user' && rule.user ? [rule.user] : [],
+        ),
       ),
     [rules],
   );
@@ -314,11 +319,17 @@ const ShareAccessModal: React.FC<ShareAccessModalProps> = ({
         });
       case 'user':
         return (
-          (record.user && userNames.get(record.user)) || record.user || '-'
+          (record.target && formatUserName(record.target)) ||
+          (record.user && userNames.get(record.user)) ||
+          record.user ||
+          '-'
         );
       case 'group':
         return (
-          (record.group && groupNames.get(record.group)) || record.group || '-'
+          record.target?.name ||
+          (record.group && groupNames.get(record.group)) ||
+          record.group ||
+          '-'
         );
       default:
         return '-';
@@ -329,8 +340,14 @@ const ShareAccessModal: React.FC<ShareAccessModalProps> = ({
     <Modal
       title={intl.formatMessage(
         {
-          id: 'pages.addressBook.accessTitle',
-          defaultMessage: '{name} - Access management',
+          id:
+            mode === 'manage'
+              ? 'pages.addressBook.accessTitle'
+              : 'pages.addressBook.accessReadOnlyTitle',
+          defaultMessage:
+            mode === 'manage'
+              ? '{name} - Access management'
+              : '{name} - Sharing settings',
         },
         { name: addressBook?.name || '' },
       )}
@@ -345,108 +362,112 @@ const ShareAccessModal: React.FC<ShareAccessModalProps> = ({
         setSelectedUser(undefined);
         setSelectedRule(1);
         setRules([]);
+        setGroups([]);
+        setUsers([]);
       }}
     >
-      <Space
-        direction="vertical"
-        size="middle"
-        style={{ width: '100%', marginBottom: 16 }}
-      >
-        <Radio.Group
-          value={shareType}
-          onChange={handleShareTypeChange}
-          optionType="button"
-          buttonStyle="solid"
+      {mode === 'manage' && (
+        <Space
+          direction="vertical"
+          size="middle"
+          style={{ width: '100%', marginBottom: 16 }}
         >
-          {shareTypeOptions.map((option) => (
-            <Radio.Button
-              key={option.value}
-              value={option.value}
-              disabled={option.value === 'everyone' && hasEveryoneRule}
-            >
-              {option.label}
-            </Radio.Button>
-          ))}
-        </Radio.Group>
-
-        <Space wrap>
-          {shareType === 'group' && (
-            <Select
-              aria-label={intl.formatMessage({
-                id: 'pages.addressBook.userGroup',
-                defaultMessage: 'User group',
-              })}
-              showSearch
-              optionFilterProp="label"
-              value={selectedGroup}
-              onChange={setSelectedGroup}
-              placeholder={intl.formatMessage({
-                id: 'pages.users.selectUserGroup',
-                defaultMessage: 'Select user group',
-              })}
-              options={groups
-                .filter((group) => !assignedGroups.has(group.guid))
-                .map((group) => ({ value: group.guid, label: group.name }))}
-              style={{ minWidth: 220 }}
-            />
-          )}
-          {shareType === 'user' && (
-            <Select
-              aria-label={intl.formatMessage({
-                id: 'pages.addressBook.selectUser',
-                defaultMessage: 'Select user',
-              })}
-              showSearch
-              optionFilterProp="label"
-              value={selectedUser}
-              onChange={setSelectedUser}
-              placeholder={intl.formatMessage({
-                id: 'pages.addressBook.selectUserPlaceholder',
-                defaultMessage: 'Search by username or email',
-              })}
-              options={users
-                .filter((user) => !assignedUsers.has(user.guid))
-                .map((user) => ({
-                  value: user.guid,
-                  label: user.display_name
-                    ? `${user.display_name} (${user.name})`
-                    : user.name,
-                }))}
-              style={{ minWidth: 220 }}
-            />
-          )}
-          {shareType === 'everyone' && (
-            <span style={{ color: 'rgba(0, 0, 0, 0.45)', lineHeight: '32px' }}>
-              <FormattedMessage
-                id="pages.addressBook.everyoneHint"
-                defaultMessage="All users will have access to this address book"
-              />
-            </span>
-          )}
-          <Select
-            aria-label={intl.formatMessage({
-              id: 'pages.addressBook.permission',
-              defaultMessage: 'Permission',
-            })}
-            value={selectedRule}
-            onChange={setSelectedRule}
-            options={permissionOptions}
-            style={{ minWidth: 160 }}
-          />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            disabled={!canAdd}
-            loading={saving}
-            onClick={handleAdd}
+          <Radio.Group
+            value={shareType}
+            onChange={handleShareTypeChange}
+            optionType="button"
+            buttonStyle="solid"
           >
-            <FormattedMessage
-              id="pages.addressBook.addAccess"
-              defaultMessage="Add access"
+            {shareTypeOptions.map((option) => (
+              <Radio.Button
+                key={option.value}
+                value={option.value}
+                disabled={option.value === 'everyone' && hasEveryoneRule}
+              >
+                {option.label}
+              </Radio.Button>
+            ))}
+          </Radio.Group>
+
+          <Space wrap>
+            {shareType === 'group' && (
+              <Select
+                aria-label={intl.formatMessage({
+                  id: 'pages.addressBook.userGroup',
+                  defaultMessage: 'User group',
+                })}
+                showSearch
+                optionFilterProp="label"
+                value={selectedGroup}
+                onChange={setSelectedGroup}
+                placeholder={intl.formatMessage({
+                  id: 'pages.users.selectUserGroup',
+                  defaultMessage: 'Select user group',
+                })}
+                options={groups
+                  .filter((group) => !assignedGroups.has(group.guid))
+                  .map((group) => ({ value: group.guid, label: group.name }))}
+                style={{ minWidth: 220 }}
+              />
+            )}
+            {shareType === 'user' && (
+              <Select
+                aria-label={intl.formatMessage({
+                  id: 'pages.addressBook.selectUser',
+                  defaultMessage: 'Select user',
+                })}
+                showSearch
+                optionFilterProp="label"
+                value={selectedUser}
+                onChange={setSelectedUser}
+                placeholder={intl.formatMessage({
+                  id: 'pages.addressBook.selectUserPlaceholder',
+                  defaultMessage: 'Search by username or email',
+                })}
+                options={users
+                  .filter((user) => !assignedUsers.has(user.guid))
+                  .map((user) => ({
+                    value: user.guid,
+                    label: formatUserName(user),
+                  }))}
+                style={{ minWidth: 220 }}
+              />
+            )}
+            {shareType === 'everyone' && (
+              <span
+                style={{ color: 'rgba(0, 0, 0, 0.45)', lineHeight: '32px' }}
+              >
+                <FormattedMessage
+                  id="pages.addressBook.everyoneHint"
+                  defaultMessage="All users will have access to this address book"
+                />
+              </span>
+            )}
+            <Select
+              aria-label={intl.formatMessage({
+                id: 'pages.addressBook.permission',
+                defaultMessage: 'Permission',
+              })}
+              value={selectedRule}
+              onChange={setSelectedRule}
+              options={permissionOptions}
+              style={{ minWidth: 160 }}
             />
-          </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              disabled={!canAdd}
+              loading={saving}
+              onClick={handleAdd}
+            >
+              <FormattedMessage
+                id="pages.addressBook.addAccess"
+                defaultMessage="Add access"
+              />
+            </Button>
+          </Space>
         </Space>
-      </Space>
+      )}
 
       <Table<API.RuleItem>
         rowKey="guid"
@@ -480,52 +501,59 @@ const ShareAccessModal: React.FC<ShareAccessModalProps> = ({
             }),
             dataIndex: 'rule',
             width: 180,
-            render: (rule: 1 | 2 | 3, record) => (
-              <Select
-                aria-label={intl.formatMessage({
-                  id: 'pages.addressBook.permission',
-                  defaultMessage: 'Permission',
-                })}
-                value={rule}
-                options={permissionOptions}
-                disabled={saving}
-                onChange={(value) => handleUpdate(record.guid, value)}
-                style={{ width: '100%' }}
-              />
-            ),
-          },
-          {
-            title: intl.formatMessage({
-              id: 'pages.common.action',
-              defaultMessage: 'Action',
-            }),
-            key: 'action',
-            width: 80,
-            render: (_, record) => (
-              <Popconfirm
-                title={intl.formatMessage({
-                  id: 'pages.addressBook.accessDeleteConfirm',
-                  defaultMessage: 'Delete this access rule?',
-                })}
-                onConfirm={() => handleDelete(record.guid)}
-                okText={intl.formatMessage({
-                  id: 'pages.common.confirm',
-                  defaultMessage: 'Yes',
-                })}
-                cancelText={intl.formatMessage({
-                  id: 'pages.common.cancel',
-                  defaultMessage: 'No',
-                })}
-              >
-                <Button
-                  type="text"
-                  danger
-                  icon={<DeleteOutlined />}
+            render: (rule: 1 | 2 | 3, record) =>
+              mode === 'manage' ? (
+                <Select
+                  aria-label={intl.formatMessage({
+                    id: 'pages.addressBook.permission',
+                    defaultMessage: 'Permission',
+                  })}
+                  value={rule}
+                  options={permissionOptions}
                   disabled={saving}
+                  onChange={(value) => handleUpdate(record.guid, value)}
+                  style={{ width: '100%' }}
                 />
-              </Popconfirm>
-            ),
+              ) : (
+                permissionOptions.find((option) => option.value === rule)?.label
+              ),
           },
+          ...(mode === 'manage'
+            ? [
+                {
+                  title: intl.formatMessage({
+                    id: 'pages.common.action',
+                    defaultMessage: 'Action',
+                  }),
+                  key: 'action',
+                  width: 80,
+                  render: (_: unknown, record: API.RuleItem) => (
+                    <Popconfirm
+                      title={intl.formatMessage({
+                        id: 'pages.addressBook.accessDeleteConfirm',
+                        defaultMessage: 'Delete this access rule?',
+                      })}
+                      onConfirm={() => handleDelete(record.guid)}
+                      okText={intl.formatMessage({
+                        id: 'pages.common.confirm',
+                        defaultMessage: 'Yes',
+                      })}
+                      cancelText={intl.formatMessage({
+                        id: 'pages.common.cancel',
+                        defaultMessage: 'No',
+                      })}
+                    >
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        disabled={saving}
+                      />
+                    </Popconfirm>
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
     </Modal>

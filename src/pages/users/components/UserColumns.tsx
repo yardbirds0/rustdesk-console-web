@@ -7,13 +7,22 @@ import {
   LogoutOutlined,
   SafetyOutlined,
   SwapOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import React from 'react';
 import { getUserColumns } from '@/components/UserSelectTable/columns';
+import { formatUserRoleNames } from './userRoleAssignment';
 
 interface UseUserColumnsOptions {
   userGroupGuid?: string;
+  isSuperAdmin: boolean;
+  canEdit: boolean;
+  canSecurity: boolean;
+  canForceLogout: boolean;
+  canDelete: boolean;
+  canMove: boolean;
   onEdit: (record: API.UserItem) => void;
+  onRoles: (record: API.UserItem) => void;
   onSecurity: (record: API.UserItem) => void;
   onForceLogout: (guid: string) => void;
   onDelete: (guid: string) => void;
@@ -24,8 +33,21 @@ export const useUserColumns = (
   options: UseUserColumnsOptions,
 ): ProColumns<API.UserItem>[] => {
   const intl = useIntl();
-  const { userGroupGuid, onEdit, onSecurity, onForceLogout, onDelete, onMove } =
-    options;
+  const {
+    userGroupGuid,
+    isSuperAdmin,
+    canEdit,
+    canSecurity,
+    canForceLogout,
+    canDelete,
+    canMove,
+    onEdit,
+    onRoles,
+    onSecurity,
+    onForceLogout,
+    onDelete,
+    onMove,
+  } = options;
 
   const baseColumns = getUserColumns();
 
@@ -36,79 +58,126 @@ export const useUserColumns = (
     valueType: 'option',
     width: 220,
     fixed: 'right',
+    hideInTable: userGroupGuid
+      ? !canMove
+      : !isSuperAdmin &&
+        !canEdit &&
+        !canSecurity &&
+        !canForceLogout &&
+        !canDelete,
     render: (_: unknown, record: API.UserItem) =>
       userGroupGuid ? (
-        <Button
-          type="link"
-          size="small"
-          icon={<SwapOutlined />}
-          onClick={() => onMove(record)}
-        >
-          <FormattedMessage id="pages.userGroups.move" defaultMessage="Move" />
-        </Button>
+        canMove ? (
+          <Button
+            type="link"
+            size="small"
+            icon={<SwapOutlined />}
+            onClick={() => onMove(record)}
+          >
+            <FormattedMessage
+              id="pages.userGroups.move"
+              defaultMessage="Move"
+            />
+          </Button>
+        ) : null
       ) : (
         <Space size={0} split={<Divider type="vertical" />}>
-          <Button
-            key="edit"
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => onEdit(record)}
-          >
-            <FormattedMessage id="pages.common.edit" defaultMessage="Edit" />
-          </Button>
-          <Button
-            key="security"
-            type="link"
-            size="small"
-            icon={<SafetyOutlined />}
-            onClick={() => onSecurity(record)}
-          >
-            <FormattedMessage
-              id="pages.users.security"
-              defaultMessage="Security"
-            />
-          </Button>
-          <Button
-            key="logout"
-            type="link"
-            size="small"
-            icon={<LogoutOutlined />}
-            onClick={() => onForceLogout(record.guid)}
-          >
-            <FormattedMessage
-              id="pages.users.forceLogout"
-              defaultMessage="Logout"
-            />
-          </Button>
-          <Popconfirm
-            key="delete"
-            title={
+          {canEdit && (isSuperAdmin || !record.is_admin) && (
+            <Button
+              key="edit"
+              type="link"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => onEdit(record)}
+            >
+              <FormattedMessage id="pages.common.edit" defaultMessage="Edit" />
+            </Button>
+          )}
+          {isSuperAdmin && (
+            <Button
+              key="roles"
+              type="link"
+              size="small"
+              icon={<TeamOutlined />}
+              onClick={() => onRoles(record)}
+            >
+              <FormattedMessage id="pages.users.roles" defaultMessage="Roles" />
+            </Button>
+          )}
+          {canSecurity && (isSuperAdmin || !record.is_admin) && (
+            <Button
+              key="security"
+              type="link"
+              size="small"
+              icon={<SafetyOutlined />}
+              onClick={() => onSecurity(record)}
+            >
               <FormattedMessage
-                id="pages.users.deleteConfirm"
-                defaultMessage="Are you sure to delete this user?"
-              />
-            }
-            onConfirm={() => onDelete(record.guid)}
-            okText={intl.formatMessage({
-              id: 'pages.common.confirm',
-              defaultMessage: 'Yes',
-            })}
-            cancelText={intl.formatMessage({
-              id: 'pages.common.cancel',
-              defaultMessage: 'No',
-            })}
-          >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-              <FormattedMessage
-                id="pages.common.delete"
-                defaultMessage="Delete"
+                id="pages.users.security"
+                defaultMessage="Security"
               />
             </Button>
-          </Popconfirm>
+          )}
+          {canForceLogout && (isSuperAdmin || !record.is_admin) && (
+            <Button
+              key="logout"
+              type="link"
+              size="small"
+              icon={<LogoutOutlined />}
+              onClick={() => onForceLogout(record.guid)}
+            >
+              <FormattedMessage
+                id="pages.users.forceLogout"
+                defaultMessage="Logout"
+              />
+            </Button>
+          )}
+          {canDelete && (isSuperAdmin || !record.is_admin) && (
+            <Popconfirm
+              key="delete"
+              title={
+                <FormattedMessage
+                  id="pages.users.deleteConfirm"
+                  defaultMessage="Are you sure to delete this user?"
+                />
+              }
+              onConfirm={() => onDelete(record.guid)}
+              okText={intl.formatMessage({
+                id: 'pages.common.confirm',
+                defaultMessage: 'Yes',
+              })}
+              cancelText={intl.formatMessage({
+                id: 'pages.common.cancel',
+                defaultMessage: 'No',
+              })}
+            >
+              <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+                <FormattedMessage
+                  id="pages.common.delete"
+                  defaultMessage="Delete"
+                />
+              </Button>
+            </Popconfirm>
+          )}
         </Space>
       ),
   };
 
-  return [...baseColumns, actionColumn];
+  const roleColumn: ProColumns<API.UserItem> = {
+    title: <FormattedMessage id="pages.users.roles" defaultMessage="Roles" />,
+    dataIndex: 'role_names',
+    width: 180,
+    search: false,
+    ellipsis: true,
+    render: (_: unknown, record) =>
+      formatUserRoleNames(
+        record,
+        intl.formatMessage({
+          id: 'pages.users.superAdmin',
+          defaultMessage: 'Super administrator',
+        }),
+      ),
+  };
+
+  return [...baseColumns, ...(isSuperAdmin ? [roleColumn] : []), actionColumn];
 };

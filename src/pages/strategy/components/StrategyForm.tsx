@@ -5,10 +5,10 @@ import React, { useEffect, useState } from 'react';
 import ConfigOptionsForm from './ConfigOptionsForm';
 
 interface StrategyFormProps {
-  mode: 'create' | 'edit';
+  mode: 'create' | 'edit' | 'view';
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onFinish: (
+  onFinish?: (
     values: API.CreateStrategyParams | API.UpdateStrategyParams,
   ) => Promise<boolean>;
   currentRecord?: API.StrategyItem | null;
@@ -24,13 +24,14 @@ const StrategyForm: React.FC<StrategyFormProps> = ({
   const intl = useIntl();
   const [form] = Form.useForm();
   const isEdit = mode === 'edit';
+  const isView = mode === 'view';
   const [configOptions, setConfigOptions] = useState<Record<string, string>>(
     {},
   );
 
   useEffect(() => {
     if (open) {
-      if (isEdit && currentRecord) {
+      if ((isEdit || isView) && currentRecord) {
         form.setFieldsValue({
           name: currentRecord.name,
           note: currentRecord.note || '',
@@ -41,9 +42,10 @@ const StrategyForm: React.FC<StrategyFormProps> = ({
         setConfigOptions({});
       }
     }
-  }, [isEdit, open, currentRecord, form]);
+  }, [isEdit, isView, open, currentRecord, form]);
 
   const handleFinish = async () => {
+    if (!onFinish) return false;
     try {
       const values = await form.validateFields();
       const submitData = {
@@ -62,8 +64,20 @@ const StrategyForm: React.FC<StrategyFormProps> = ({
     <ModalForm
       title={
         <FormattedMessage
-          id={isEdit ? 'pages.strategies.edit' : 'pages.strategies.create'}
-          defaultMessage={isEdit ? 'Edit Strategy' : 'Create Strategy'}
+          id={
+            isView
+              ? 'pages.strategies.view'
+              : isEdit
+                ? 'pages.strategies.edit'
+                : 'pages.strategies.create'
+          }
+          defaultMessage={
+            isView
+              ? 'View Strategy'
+              : isEdit
+                ? 'Edit Strategy'
+                : 'Create Strategy'
+          }
         />
       }
       open={open}
@@ -72,6 +86,19 @@ const StrategyForm: React.FC<StrategyFormProps> = ({
       form={form}
       layout="vertical"
       modalProps={{ destroyOnClose: true }}
+      submitter={
+        isView
+          ? {
+              submitButtonProps: { style: { display: 'none' } },
+              resetButtonProps: {
+                children: intl.formatMessage({
+                  id: 'pages.common.close',
+                  defaultMessage: 'Close',
+                }),
+              },
+            }
+          : undefined
+      }
       width={720}
     >
       <Form.Item
@@ -85,6 +112,7 @@ const StrategyForm: React.FC<StrategyFormProps> = ({
         rules={[{ required: true }]}
       >
         <Input
+          disabled={isView}
           placeholder={intl.formatMessage({
             id: 'pages.strategies.enterName',
             defaultMessage: 'Enter strategy name',
@@ -98,6 +126,7 @@ const StrategyForm: React.FC<StrategyFormProps> = ({
         }
       >
         <Input.TextArea
+          disabled={isView}
           rows={2}
           placeholder={intl.formatMessage({
             id: 'pages.common.enterDescription',
@@ -113,7 +142,11 @@ const StrategyForm: React.FC<StrategyFormProps> = ({
         />
       </Divider>
 
-      <ConfigOptionsForm value={configOptions} onChange={setConfigOptions} />
+      <ConfigOptionsForm
+        value={configOptions}
+        onChange={setConfigOptions}
+        disabled={isView}
+      />
     </ModalForm>
   );
 };

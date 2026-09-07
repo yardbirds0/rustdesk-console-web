@@ -227,6 +227,7 @@ declare namespace API {
     strategy_name?: string;
     user_group_guid?: string;
     user_group_name?: string;
+    role_names?: string[];
     avatar?: string;
     created_at?: string;
     updated_at?: string;
@@ -444,6 +445,10 @@ declare namespace API {
     };
     user?: string;
     group?: string;
+    target?: {
+      name: string;
+      display_name?: string;
+    };
     rule: 1 | 2 | 3;
     ruleType: 'user' | 'group' | 'everyone';
     createdAt?: string;
@@ -462,11 +467,27 @@ declare namespace API {
     rule: 1 | 2 | 3;
   };
 
+  type AddressBookShareCandidateUser = {
+    guid: string;
+    name: string;
+    display_name?: string;
+  };
+
+  type AddressBookShareCandidateGroup = {
+    guid: string;
+    name: string;
+  };
+
+  type AddressBookShareCandidates = {
+    users: AddressBookShareCandidateUser[];
+    groups: AddressBookShareCandidateGroup[];
+  };
+
   type ConnectionAuditItem = {
     id?: number;
     deviceId?: string;
     deviceUuid?: string;
-    connId?: string;
+    connId?: string | number;
     ip?: string;
     action?: string;
     peerId?: string;
@@ -477,7 +498,15 @@ declare namespace API {
     requestedAt?: string;
     establishedAt?: string;
     closedAt?: string;
+    can_disconnect: boolean;
     [key: string]: any;
+  };
+
+  type ActiveConnectionItem = {
+    deviceId: string;
+    deviceUuid: string;
+    connId: number;
+    can_disconnect: true;
   };
 
   type FileAuditItem = {
@@ -555,17 +584,16 @@ declare namespace API {
   type RoleItem = {
     guid: string;
     name: string;
-    note?: string;
-    permission_count?: number;
-    created_at?: string;
-    updated_at?: string;
-    [key: string]: any;
+    note: string;
+    permissions: string[];
+    created_at: string;
+    updated_at: string;
   };
 
   type CreateRoleParams = {
     name: string;
     note?: string;
-    permissions?: string[];
+    permissions: string[];
   };
 
   type UpdateRoleParams = {
@@ -575,11 +603,51 @@ declare namespace API {
   };
 
   type PermissionItem = {
-    id: string;
+    code: string;
+    resource: string;
+    action: string;
     name: string;
-    description?: string;
-    module?: string;
-    [key: string]: any;
+    description: string;
+    scope: 'global' | 'device_group';
+    requires?: string[];
+  };
+
+  type PermissionScopeType = 'global' | 'device_group';
+
+  type EffectivePermissionScope = {
+    scope_type: PermissionScopeType;
+    device_group_guids: string[];
+  };
+
+  type EffectivePermissions = {
+    permissions: string[];
+    scopes: Record<string, EffectivePermissionScope>;
+  };
+
+  type UserRoleAssignment = {
+    guid: string;
+    role_guid: string;
+    role_name: string;
+    scope_type: 'global' | 'device_group';
+    device_group_guids: string[];
+    permissions: string[];
+    created_at: string;
+    updated_at: string;
+  };
+
+  type UserRolesResponse = {
+    data: UserRoleAssignment[];
+    effective_scope: Record<string, EffectivePermissionScope>;
+  };
+
+  type UserRoleAssignmentParams = {
+    role_guid: string;
+    scope_type: 'global' | 'device_group';
+    device_group_guids?: string[];
+  };
+
+  type ReplaceUserRolesParams = {
+    assignments: UserRoleAssignmentParams[];
   };
 
   type StrategyItem = {
@@ -619,21 +687,32 @@ declare namespace API {
   type StrategyAssignmentDeviceItem = {
     uuid: string;
     id: string;
-    status: number;
   };
 
   type StrategyAssignmentUserItem = {
     guid: string;
-    username: string;
-    email: string;
-    status: number;
-    is_admin: boolean;
+    name: string;
   };
 
   type StrategyAssignmentDeviceGroupItem = {
     guid: string;
     name: string;
-    note: string;
+  };
+
+  type StrategyTargetDeviceCandidate = {
+    uuid: string;
+    id: string;
+  };
+
+  type StrategyTargetUserCandidate = {
+    guid: string;
+    name: string;
+  };
+
+  type StrategyTargetCandidateParams = {
+    target_type: 'device' | 'user';
+    current: number;
+    pageSize: number;
   };
 
   type StrategyAssignmentParams = {
@@ -661,6 +740,12 @@ declare namespace API {
   type UpdateUserGroupParams = {
     name?: string;
     note?: string;
+  };
+
+  type StrategyCandidateItem = {
+    guid: string;
+    name: string;
+    note: string;
   };
 
   type UserGroupMoveResult = {

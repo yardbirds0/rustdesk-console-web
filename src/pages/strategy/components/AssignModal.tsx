@@ -12,22 +12,26 @@ import {
   Spin,
   Tag,
 } from 'antd';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   assignStrategy,
-  getDeviceGroupList,
-  getDeviceList,
-  getAdminUserList,
+  getStrategyTargetDeviceGroupList,
   getStrategyAssignments,
+  getStrategyTargetCandidates,
   unassignStrategy,
 } from '@/services/rustdesk-console';
+import {
+  getAssignableStrategyTargetTypes,
+  type StrategyAssignmentTargetType,
+} from '../strategyAccess';
 
-type TargetType = 'device' | 'user' | 'device_group';
+type TargetType = StrategyAssignmentTargetType;
 
 interface AssignModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   record: API.StrategyItem | null;
+  canAssignUsers: boolean;
   onSuccess: () => void;
 }
 
@@ -74,6 +78,7 @@ const AssignModal: React.FC<AssignModalProps> = ({
   open,
   onOpenChange,
   record,
+  canAssignUsers,
   onSuccess,
 }) => {
   const intl = useIntl();
@@ -82,8 +87,12 @@ const AssignModal: React.FC<AssignModalProps> = ({
   const [selectedGuids, setSelectedGuids] = useState<string[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
 
-  const [deviceList, setDeviceList] = useState<API.DeviceItem[]>([]);
-  const [userList, setUserList] = useState<API.UserItem[]>([]);
+  const [deviceList, setDeviceList] = useState<
+    API.StrategyTargetDeviceCandidate[]
+  >([]);
+  const [userList, setUserList] = useState<API.StrategyTargetUserCandidate[]>(
+    [],
+  );
   const [deviceGroupList, setDeviceGroupList] = useState<API.DeviceGroupItem[]>(
     [],
   );
@@ -91,6 +100,13 @@ const AssignModal: React.FC<AssignModalProps> = ({
 
   const [assignedItems, setAssignedItems] = useState<AssignedItem[]>([]);
   const [assignedLoading, setAssignedLoading] = useState(false);
+  const assignableTargetTypes = useMemo(
+    () =>
+      getAssignableStrategyTargetTypes({
+        canAssignUsers,
+      }),
+    [canAssignUsers],
+  );
 
   const loadAssignedTargets = useCallback(async () => {
     if (!open || !record) return;
@@ -102,11 +118,13 @@ const AssignModal: React.FC<AssignModalProps> = ({
           current: 1,
           pageSize: ASSIGNMENT_PAGE_SIZE,
         }),
-        getStrategyAssignments(record.guid, {
-          target_type: 'user',
-          current: 1,
-          pageSize: ASSIGNMENT_PAGE_SIZE,
-        }),
+        canAssignUsers
+          ? getStrategyAssignments(record.guid, {
+              target_type: 'user',
+              current: 1,
+              pageSize: ASSIGNMENT_PAGE_SIZE,
+            })
+          : Promise.resolve({ data: [], total: 0 }),
         getStrategyAssignments(record.guid, {
           target_type: 'device_group',
           current: 1,
@@ -116,8 +134,7 @@ const AssignModal: React.FC<AssignModalProps> = ({
 
       const items: AssignedItem[] = [];
 
-      (deviceResult.data || []).forEach((d) => {
-        const device = d as API.StrategyAssignmentDeviceItem;
+      deviceResult.data.forEach((device) => {
         items.push({
           type: 'device',
           guid: device.uuid,
@@ -125,23 +142,19 @@ const AssignModal: React.FC<AssignModalProps> = ({
         });
       });
 
-      (userResult.data || []).forEach((u) => {
-        const user = u as API.StrategyAssignmentUserItem;
+      userResult.data.forEach((user) => {
         items.push({
           type: 'user',
           guid: user.guid,
-          name: user.username,
-          extra: user.email,
+          name: user.name,
         });
       });
 
-      (groupResult.data || []).forEach((g) => {
-        const group = g as API.StrategyAssignmentDeviceGroupItem;
+      groupResult.data.forEach((group) => {
         items.push({
           type: 'device_group',
           guid: group.guid,
           name: group.name,
-          extra: group.note,
         });
       });
 
@@ -156,37 +169,48 @@ const AssignModal: React.FC<AssignModalProps> = ({
     } finally {
       setAssignedLoading(false);
     }
-  }, [open, record, intl, msgApi]);
+  }, [canAssignUsers, open, record, intl, msgApi]);
 
   useEffect(() => {
     loadAssignedTargets();
   }, [loadAssignedTargets]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || assignableTargetTypes.includes(targetType)) return;
+    setTargetType(assignableTargetTypes[0]);
+    setSelectedGuids([]);
+  }, [assignableTargetTypes, open, targetType]);
+
+  useEffect(() => {
+    if (!open || !assignableTargetTypes.includes(targetType)) return;
     setOptionsLoading(true);
     const loadOptions = async () => {
       try {
         switch (targetType) {
           case 'device': {
-            const result = await getDeviceList({ current: 1, pageSize: 200 });
-            setDeviceList(result.data || []);
+            const result = await getStrategyTargetCandidates({
+              target_type: 'device',
+              current: 1,
+              pageSize: 200,
+            });
+            setDeviceList(result.data);
             break;
           }
           case 'user': {
-            const result = await getAdminUserList({
+            const result = await getStrategyTargetCandidates({
+              target_type: 'user',
               current: 1,
               pageSize: 200,
             });
-            setUserList(result.data || []);
+            setUserList(result.data);
             break;
           }
           case 'device_group': {
-            const result = await getDeviceGroupList({
+            const result = await getStrategyTargetDeviceGroupList({
               current: 1,
               pageSize: 200,
             });
-            setDeviceGroupList(result.data || []);
+            setDeviceGroupList(result.data);
             break;
           }
         }
@@ -202,7 +226,7 @@ const AssignModal: React.FC<AssignModalProps> = ({
       }
     };
     loadOptions();
-  }, [open, targetType]);
+  }, [assignableTargetTypes, intl, msgApi, open, targetType]);
 
   const handleAssign = async () => {
     if (!record || selectedGuids.length === 0) return;
@@ -289,13 +313,13 @@ const AssignModal: React.FC<AssignModalProps> = ({
     switch (targetType) {
       case 'device':
         return deviceList.map((d) => ({
-          value: d.uuid || d.guid,
-          label: `${d.id} - ${d.info?.device_name || d.info?.username || ''}`,
+          value: d.uuid,
+          label: d.id,
         }));
       case 'user':
         return userList.map((u) => ({
           value: u.guid,
-          label: `${u.name} (${u.email})`,
+          label: u.name,
         }));
       case 'device_group':
         return deviceGroupList.map((g) => ({
@@ -434,7 +458,9 @@ const AssignModal: React.FC<AssignModalProps> = ({
           />
         </div>
         <Radio.Group
-          options={targetTypeOptions}
+          options={targetTypeOptions.filter((option) =>
+            assignableTargetTypes.includes(option.value),
+          )}
           value={targetType}
           onChange={(e) => {
             setTargetType(e.target.value);

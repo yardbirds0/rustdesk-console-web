@@ -1,4 +1,85 @@
 import Bowser from 'bowser';
+import createAccess from '@/access';
+
+type AccessState = Parameters<typeof createAccess>[0];
+type AccessCapabilities = ReturnType<typeof createAccess>;
+
+const DEFAULT_DESTINATIONS: Array<
+  [path: string, allowed: (access: AccessCapabilities) => boolean]
+> = [
+  ['/dashboard', (access) => access.isSuperAdmin],
+  ['/devices', (access) => access.canDevicesView],
+  ['/users', (access) => access.canUsersView],
+  ['/groups/user', (access) => access.canUserGroupsView],
+  ['/strategy', (access) => access.canStrategiesAccess],
+  ['/audits/conn', (access) => access.canAuditConnectionAccess],
+  [
+    '/address-book/shared',
+    (access) =>
+      access.canAddressBooksView ||
+      access.canAddressBooksEdit ||
+      access.canAddressBooksShare,
+  ],
+];
+
+function internalRedirectPath(redirect?: string | null): string | undefined {
+  if (!redirect?.startsWith('/') || redirect.startsWith('//')) return;
+  try {
+    const base = 'https://console.invalid';
+    const url = new URL(redirect, base);
+    if (url.origin !== base || url.pathname === '/') return;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return;
+  }
+}
+
+function canAccessPath(pathname: string, access: AccessCapabilities): boolean {
+  if (
+    pathname === '/user/center' ||
+    pathname === '/address-book' ||
+    pathname.startsWith('/address-book/')
+  ) {
+    return true;
+  }
+  if (pathname === '/dashboard') return access.isSuperAdmin;
+  if (pathname === '/devices') return access.canDevicesView;
+  if (pathname === '/users') return access.canUsersView;
+  if (pathname === '/groups/user') return access.canUserGroupsView;
+  if (
+    pathname === '/groups/device' ||
+    pathname.startsWith('/groups/device/') ||
+    pathname === '/roles' ||
+    pathname === '/custom-client' ||
+    pathname === '/settings' ||
+    pathname.startsWith('/settings/')
+  ) {
+    return access.isSuperAdmin;
+  }
+  if (pathname === '/audits/conn') return access.canAuditConnectionAccess;
+  if (['/audits/file', '/audits/alarm', '/audits/console'].includes(pathname)) {
+    return access.canAuditView;
+  }
+  if (pathname === '/strategy') return access.canStrategiesAccess;
+  return false;
+}
+
+export function resolvePostLoginPath(
+  redirect: string | null | undefined,
+  state: AccessState,
+): string {
+  const access = createAccess(state);
+  const internalPath = internalRedirectPath(redirect);
+  if (internalPath) {
+    const { pathname } = new URL(internalPath, 'https://console.invalid');
+    if (canAccessPath(pathname, access)) return internalPath;
+  }
+
+  return (
+    DEFAULT_DESTINATIONS.find(([, allowed]) => allowed(access))?.[0] ||
+    '/address-book/personal'
+  );
+}
 
 export function getDeviceInfo(): API.DeviceInfo {
   const browser = Bowser.getParser(window.navigator.userAgent);

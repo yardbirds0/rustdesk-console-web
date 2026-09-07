@@ -1,42 +1,43 @@
 import {
+  KeyOutlined,
   LockOutlined,
   MailOutlined,
-  UserOutlined,
   SafetyCertificateOutlined,
-  KeyOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { LoginForm, ProFormText } from '@ant-design/pro-components';
 import {
   FormattedMessage,
   Helmet,
+  history,
   useIntl,
   useModel,
-  history,
 } from '@umijs/max';
 import { App, Button, Checkbox, Form } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { setToken } from '@/utils/auth';
 import { Footer } from '@/components';
-import { login, getLoginOptions } from '@/services/rustdesk-console/auth';
+import { getLoginOptions, login } from '@/services/rustdesk-console/auth';
 import {
   passkeyAuthBegin,
   passkeyAuthVerify,
 } from '@/services/rustdesk-console/passkey';
+import { getMyPermissions } from '@/services/rustdesk-console/permission';
+import { removeToken, setToken } from '@/utils/auth';
 import {
   isWebAuthnSupported,
   prepareRequestOptions,
   serializeAuthenticationResponse,
 } from '@/utils/webauthn';
 import Settings from '../../../../config/defaultSettings';
-import type { AuthStep, VerifySession } from './types';
-import { getDeviceInfo, parseOidcOptions } from './utils';
-import { useStyles } from './styles';
 import Lang from './components/Lang';
 import LoginMessage from './components/LoginMessage';
 import OidcLogin from './components/OidcLogin';
-import VerifyStep from './components/VerifyStep';
 import PasskeyVerifyStep from './components/PasskeyVerifyStep';
+import VerifyStep from './components/VerifyStep';
+import { useStyles } from './styles';
+import type { AuthStep, VerifySession } from './types';
+import { getDeviceInfo, parseOidcOptions, resolvePostLoginPath } from './utils';
 
 const Login: React.FC = () => {
   const [authStep, setAuthStep] = useState<AuthStep>('account');
@@ -77,22 +78,72 @@ const Login: React.FC = () => {
   const handleLoginSuccess = useCallback(
     async (token: string, user?: API.CurrentUser) => {
       setToken(token, rememberMe);
+      let permissions: API.EffectivePermissions | undefined;
+      try {
+        permissions = await getMyPermissions({ skipErrorHandler: true });
+      } catch (error) {
+        const status = (error as { response?: { status?: number } })?.response
+          ?.status;
+        if (status === 401 || status === 403) {
+          removeToken();
+          flushSync(() => {
+            setInitialState((state) => ({
+              ...state,
+              currentUser: undefined,
+              permissions: undefined,
+              permissionsLoadFailed: false,
+            }));
+          });
+          setLoginError(
+            intl.formatMessage({
+              id: 'pages.login.failure',
+              defaultMessage: 'Login failed, please try again!',
+            }),
+          );
+          return;
+        }
+        flushSync(() => {
+          setInitialState((state) => ({
+            ...state,
+            currentUser: user,
+            permissions: undefined,
+            permissionsLoadFailed: true,
+          }));
+        });
+        message.error(
+          intl.formatMessage({
+            id: 'pages.login.permissionsLoadFailed',
+            defaultMessage:
+              'Permissions could not be loaded. Opened the personal address book; refresh to retry.',
+          }),
+        );
+        history.push('/address-book/personal');
+        window.dispatchEvent(new Event('auth:permissions-stale'));
+        return;
+      }
+      if (user || permissions) {
+        flushSync(() => {
+          setInitialState((s) => ({
+            ...s,
+            currentUser: user,
+            permissions,
+            permissionsLoadFailed: false,
+          }));
+        });
+      }
       message.success(
         intl.formatMessage({
           id: 'pages.login.success',
           defaultMessage: 'Login successful!',
         }),
       );
-      if (user) {
-        flushSync(() => {
-          setInitialState((s) => ({
-            ...s,
-            currentUser: user,
-          }));
-        });
-      }
       const urlParams = new URL(window.location.href).searchParams;
-      history.push(urlParams.get('redirect') || '/');
+      history.push(
+        resolvePostLoginPath(urlParams.get('redirect'), {
+          currentUser: user,
+          permissions,
+        }),
+      );
     },
     [rememberMe, intl, message, setInitialState],
   );

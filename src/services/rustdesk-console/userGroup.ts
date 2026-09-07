@@ -57,10 +57,10 @@ export async function moveUsersToGroup(guid: string, userGuids: string[]) {
 
 export async function getAllUserGroups() {
   const first = await getUserGroupList({ current: 1, pageSize: 100 });
-  const groups = [...(first.data || [])];
+  const groups = [...first.data];
   for (let current = 2; groups.length < first.total; current += 1) {
     const page = await getUserGroupList({ current, pageSize: 100 });
-    if (!page.data?.length) break;
+    if (!page.data.length) break;
     groups.push(...page.data);
   }
   return groups;

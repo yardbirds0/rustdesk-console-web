@@ -1,4 +1,6 @@
 export { login, logout, currentUser } from './auth';
+export { getPermissionList, getMyPermissions } from './permission';
+export { getUserRoles, replaceUserRoles } from './userRole';
 export {
   updateProfile,
   uploadAvatar,
@@ -8,7 +10,14 @@ export {
   disable2FA,
   changePassword,
 } from './account';
-export { getDeviceList, batchUpdateDeviceStatus, deleteDevice, updateDevice, assignDevice } from './device';
+export {
+  getDeviceList,
+  getAdminDeviceList,
+  batchUpdateDeviceStatus,
+  deleteDevice,
+  updateDevice,
+  assignDevice,
+} from './device';
 export {
   getAdminUserList,
   createUser,
@@ -23,12 +32,14 @@ export {
 } from './user';
 export {
   getDeviceGroupList,
+  getStrategyTargetDeviceGroupList,
   createDeviceGroup,
   updateDeviceGroup,
   deleteDeviceGroup,
   addDeviceToGroup,
   removeDeviceFromGroup,
   getAccessibleGroups,
+  getAllDeviceGroups,
 } from './deviceGroup';
 export {
   getLegacyAddressBook,
@@ -42,6 +53,7 @@ export {
   deleteCustomAddressBooks,
   getSharedAddressBooks,
   getWebSharedAddressBooks,
+  getWebSharedAddressBook,
   addSharedAddressBook,
   updateSharedAddressBook,
   deleteSharedAddressBooks,
@@ -55,12 +67,14 @@ export {
   updateTagColor,
   deleteTag,
   getRules,
+  getAddressBookShareCandidates,
   deleteRules,
   addRule,
   updateRule,
 } from './addressBook';
 export {
   getConnectionAudits,
+  getActiveConnections,
   getFileAudits,
   getAlarmAudits,
   getConsoleAudits,
@@ -87,6 +101,7 @@ export {
 } from './oidcProvider';
 export {
   getStrategyList,
+  getStrategyCandidates,
   getStrategy,
   createStrategy,
   updateStrategy,
@@ -94,6 +109,7 @@ export {
   assignStrategy,
   unassignStrategy,
   getStrategyAssignments,
+  getStrategyTargetCandidates,
 } from './strategy';
 export { getSystemInfo, getLicenseStatus, checkUpdate } from './system';
 export {
