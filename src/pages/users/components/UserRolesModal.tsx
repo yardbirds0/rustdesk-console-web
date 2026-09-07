@@ -190,6 +190,7 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
     const scopes = deriveEffectivePermissionScopes(drafts, roleByGuid);
     if (user?.is_admin) {
       for (const permission of permissionCatalog) {
+        if (!permission.assignable) continue;
         scopes[permission.code] = {
           scope_type: 'global',
           device_group_guids: [],

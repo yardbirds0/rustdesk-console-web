@@ -616,6 +616,8 @@ declare namespace API {
     action: string;
     name: string;
     description: string;
+    assignable: boolean;
+    system_only: boolean;
     scope: 'global' | 'device_group';
     requires?: string[];
   };

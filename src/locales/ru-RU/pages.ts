@@ -362,6 +362,7 @@ export default {
   'pages.roles.resource.address_books': 'Адресные книги',
   'pages.roles.resource.strategies': 'Стратегии',
   'pages.roles.resource.audit': 'Аудит',
+  'pages.roles.resource.roles': 'Роли',
   'pages.roles.resource.other': 'Другое',
   'pages.roles.unknownResource': 'Неизвестный ресурс',
   'pages.roles.unknownPermission': 'Неизвестное право',
@@ -398,6 +399,11 @@ export default {
   'pages.roles.permission.strategies.delete': 'Удаление стратегий',
   'pages.roles.permission.strategies.assign': 'Назначение стратегий',
   'pages.roles.permission.audit.view': 'Просмотр журналов аудита',
+  'pages.roles.permission.roles.view': 'Просмотр ролей',
+  'pages.roles.permission.roles.assign': 'Назначение ролей',
+  'pages.roles.permission.roles.create': 'Создание ролей',
+  'pages.roles.permission.roles.edit': 'Редактирование ролей',
+  'pages.roles.permission.roles.delete': 'Удаление ролей',
   'pages.roles.create': 'Создать роль',
   'pages.roles.view': 'Просмотр роли',
   'pages.roles.edit': 'Редактировать роль',
@@ -409,6 +415,11 @@ export default {
   'pages.roles.updateFailed': 'Не удалось обновить роль',
   'pages.roles.deleteSuccess': 'Роль успешно удалена',
   'pages.roles.deleteFailed': 'Не удалось удалить роль',
+  'pages.roles.systemIdentity.systemSettings': 'Системные настройки',
+  'pages.roles.systemIdentity.deviceGroupStructure':
+    'Структура групп устройств',
+  'pages.roles.systemIdentity.identityAdministration':
+    'Управление идентификацией',
   'pages.settings.save': 'Сохранить настройки',
   'pages.settings.general': 'Общие настройки',
   'pages.settings.fetchFailed': 'Не удалось загрузить настройки',
@@ -506,7 +517,6 @@ export default {
   'pages.users.rolesSaveFailed': 'Не удалось сохранить роли пользователя',
   'pages.users.rolesSaved': 'Роли пользователя сохранены',
   'pages.users.addRole': 'Добавить роль',
-  'pages.users.noRoles': 'Роли не назначены',
   'pages.users.superAdmin': 'Суперадминистратор',
   'pages.users.roleAssignmentTitle': 'Роль {number}',
   'pages.users.selectRole': 'Выберите роль',
@@ -544,6 +554,8 @@ export default {
   'pages.users.roleEligibility.protected_role':
     'Защищённые роли может назначать или удалять только суперадминистратор',
   'pages.users.roleEligibility.protected_target': 'Целевой аккаунт защищён',
+  'pages.users.roleEligibility.super_admin_target':
+    'Обычные роли нельзя назначать суперадминистратору',
   'pages.users.roleEligibility.self_target': 'Нельзя изменять собственные роли',
   'pages.users.roleEligibility.missing_caller_scope':
     'Недостаточный охват разрешений',

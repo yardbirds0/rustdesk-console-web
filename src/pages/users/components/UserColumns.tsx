@@ -12,7 +12,11 @@ import { FormattedMessage, useIntl } from '@umijs/max';
 import { Button, Divider, Popconfirm, Space, Tooltip } from 'antd';
 import React from 'react';
 import { getUserColumns } from '@/components/UserSelectTable/columns';
-import { formatUserRoleNames, isCurrentUserTarget } from './userRoleAssignment';
+import {
+  formatUserRoleNames,
+  isCurrentUserTarget,
+  isRoleAssignmentTargetDisabled,
+} from './userRoleAssignment';
 
 interface UseUserColumnsOptions {
   userGroupGuid?: string;
@@ -143,13 +147,17 @@ export const useUserColumns = (
           {(isSuperAdmin || canRolesAssign) && (
             <Tooltip
               title={
-                !isSuperAdmin &&
-                (record.is_protected ||
-                  isCurrentUserTarget(currentUserGuid, record.guid))
+                isRoleAssignmentTargetDisabled(
+                  isSuperAdmin,
+                  currentUserGuid,
+                  record,
+                )
                   ? intl.formatMessage({
-                      id: isCurrentUserTarget(currentUserGuid, record.guid)
-                        ? 'pages.users.roleEligibility.self_target'
-                        : 'pages.users.roleEligibility.protected_target',
+                      id: record.is_admin
+                        ? 'pages.users.roleEligibility.super_admin_target'
+                        : isCurrentUserTarget(currentUserGuid, record.guid)
+                          ? 'pages.users.roleEligibility.self_target'
+                          : 'pages.users.roleEligibility.protected_target',
                       defaultMessage: 'Role assignment is unavailable',
                     })
                   : undefined
@@ -162,11 +170,11 @@ export const useUserColumns = (
                   size="small"
                   icon={<TeamOutlined />}
                   onClick={() => onRoles(record)}
-                  disabled={
-                    !isSuperAdmin &&
-                    (record.is_protected === true ||
-                      isCurrentUserTarget(currentUserGuid, record.guid))
-                  }
+                  disabled={isRoleAssignmentTargetDisabled(
+                    isSuperAdmin,
+                    currentUserGuid,
+                    record,
+                  )}
                 >
                   <FormattedMessage
                     id="pages.users.roles"

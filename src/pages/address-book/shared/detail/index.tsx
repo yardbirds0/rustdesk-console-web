@@ -1,19 +1,14 @@
 import { PageContainer } from '@ant-design/pro-components';
-import {
-  FormattedMessage,
-  useAccess,
-  useNavigate,
-  useParams,
-} from '@umijs/max';
+import { FormattedMessage, useNavigate, useParams } from '@umijs/max';
 import { Button, Result, Spin } from 'antd';
 import React, { useEffect, useState } from 'react';
 import PersonalAddressBook from '@/pages/address-book/personal';
 import { getWebSharedAddressBook } from '@/services/rustdesk-console/addressBook';
+import { canWriteSharedAddressBook } from './access';
 
 const SharedAddressBookDetail: React.FC = () => {
   const { guid } = useParams<{ guid: string }>();
   const navigate = useNavigate();
-  const access = useAccess();
   const [profile, setProfile] = useState<API.SharedAddressBook>();
   const [errorStatus, setErrorStatus] = useState<403 | 404 | 'error'>();
 
@@ -96,7 +91,7 @@ const SharedAddressBookDetail: React.FC = () => {
     <PersonalAddressBook
       guid={profile.guid}
       title={profile.name}
-      canWrite={access.canAddressBooksEdit && (profile.rule || 0) >= 2}
+      canWrite={canWriteSharedAddressBook(profile.rule)}
       onBack={() => navigate('/address-book/shared')}
     />
   );

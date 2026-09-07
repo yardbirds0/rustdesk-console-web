@@ -369,6 +369,7 @@ export default {
   'pages.roles.resource.address_books': 'Catálogos de endereços',
   'pages.roles.resource.strategies': 'Estratégias',
   'pages.roles.resource.audit': 'Auditoria',
+  'pages.roles.resource.roles': 'Funções',
   'pages.roles.resource.other': 'Outros',
   'pages.roles.unknownResource': 'Recurso desconhecido',
   'pages.roles.unknownPermission': 'Permissão desconhecida',
@@ -402,6 +403,11 @@ export default {
   'pages.roles.permission.strategies.delete': 'Excluir estratégias',
   'pages.roles.permission.strategies.assign': 'Atribuir estratégias',
   'pages.roles.permission.audit.view': 'Visualizar logs de auditoria',
+  'pages.roles.permission.roles.view': 'Visualizar funções',
+  'pages.roles.permission.roles.assign': 'Atribuir funções',
+  'pages.roles.permission.roles.create': 'Criar funções',
+  'pages.roles.permission.roles.edit': 'Editar funções',
+  'pages.roles.permission.roles.delete': 'Excluir funções',
   'pages.roles.create': 'Criar Função',
   'pages.roles.view': 'Ver função',
   'pages.roles.edit': 'Editar Função',
@@ -413,6 +419,11 @@ export default {
   'pages.roles.updateFailed': 'Falha ao atualizar função',
   'pages.roles.deleteSuccess': 'Função excluída com sucesso',
   'pages.roles.deleteFailed': 'Falha ao excluir função',
+  'pages.roles.systemIdentity.systemSettings': 'Configurações do sistema',
+  'pages.roles.systemIdentity.deviceGroupStructure':
+    'Estrutura de grupos de dispositivos',
+  'pages.roles.systemIdentity.identityAdministration':
+    'Administração de identidades',
   'pages.settings.save': 'Salvar Configurações',
   'pages.settings.general': 'Configurações Gerais',
   'pages.settings.fetchFailed': 'Falha ao carregar configurações',
@@ -509,7 +520,6 @@ export default {
   'pages.users.rolesSaveFailed': 'Falha ao salvar as funções do usuário',
   'pages.users.rolesSaved': 'Funções do usuário salvas',
   'pages.users.addRole': 'Adicionar função',
-  'pages.users.noRoles': 'Nenhuma função atribuída',
   'pages.users.superAdmin': 'Superadministrador',
   'pages.users.roleAssignmentTitle': 'Função {number}',
   'pages.users.selectRole': 'Selecionar função',
@@ -548,6 +558,8 @@ export default {
     'Funções protegidas só podem ser atribuídas ou removidas pelo superadministrador',
   'pages.users.roleEligibility.protected_target':
     'A conta de destino está protegida',
+  'pages.users.roleEligibility.super_admin_target':
+    'Funções comuns não podem ser atribuídas ao superadministrador',
   'pages.users.roleEligibility.self_target':
     'Você não pode alterar suas próprias funções',
   'pages.users.roleEligibility.missing_caller_scope':

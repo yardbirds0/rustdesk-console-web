@@ -18,6 +18,8 @@ const catalog = (
     action: code.split('.')[1],
     name: code,
     description: code,
+    assignable: true,
+    system_only: false,
     scope: 'global',
     requires: requirements[code] || [],
   }));
@@ -49,6 +51,8 @@ const allPermissionCodes = [
   'strategies.delete',
   'strategies.assign',
   'audit.view',
+  'roles.view',
+  'roles.assign',
 ];
 
 test('defines the seven approved role permission presets in display order', () => {
@@ -133,10 +137,15 @@ test('uses the approved least-privilege mapping for each named preset', () => {
   }
 });
 
-test('system administrator preset selects every real permission currently returned by the API', () => {
+test('system administrator preset selects every assignable permission and excludes system-only capabilities', () => {
+  const systemOnlyCodes = ['roles.create', 'roles.edit', 'roles.delete'];
   const permissions = resolvePresetPermissions(
     'systemAdministrator',
-    catalog(allPermissionCodes),
+    catalog([...allPermissionCodes, ...systemOnlyCodes]).map((item) =>
+      systemOnlyCodes.includes(item.code)
+        ? { ...item, assignable: false, system_only: true }
+        : item,
+    ),
   );
 
   expect(permissions).toEqual(allPermissionCodes);

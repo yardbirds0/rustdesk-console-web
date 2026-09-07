@@ -75,7 +75,9 @@ export function resolvePresetPermissions(
   presetKey: RolePermissionPresetKey,
   catalog: API.PermissionItem[],
 ): string[] {
-  const availableCodes = catalog.map((permission) => permission.code);
+  const availableCodes = catalog
+    .filter((permission) => permission.assignable)
+    .map((permission) => permission.code);
   const available = new Set(availableCodes);
   const preset = ROLE_PERMISSION_PRESETS.find((item) => item.key === presetKey);
   const selected =
@@ -93,7 +95,11 @@ export function getMatchingRolePermissionPreset(
 ): RolePermissionPresetSelection {
   if (catalog.length === 0) return CUSTOM_ROLE_PERMISSION_PRESET_KEY;
 
-  const available = new Set(catalog.map((permission) => permission.code));
+  const available = new Set(
+    catalog
+      .filter((permission) => permission.assignable)
+      .map((permission) => permission.code),
+  );
   const selected = new Set(selectedCodes.filter((code) => available.has(code)));
   const preset = ROLE_PERMISSION_PRESETS.find(({ key }) => {
     const presetProtected = key === 'systemAdministrator';

@@ -10,6 +10,9 @@ const isPermissionItem = (value: unknown): value is API.PermissionItem => {
     typeof item.action === 'string' &&
     typeof item.name === 'string' &&
     typeof item.description === 'string' &&
+    typeof item.assignable === 'boolean' &&
+    typeof item.system_only === 'boolean' &&
+    item.assignable !== item.system_only &&
     (item.scope === 'global' || item.scope === 'device_group') &&
     (item.requires === undefined ||
       (Array.isArray(item.requires) &&
