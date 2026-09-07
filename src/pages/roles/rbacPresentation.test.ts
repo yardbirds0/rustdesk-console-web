@@ -33,6 +33,11 @@ const PERMISSION_CODES = [
   'strategies.delete',
   'strategies.assign',
   'audit.view',
+  'roles.view',
+  'roles.assign',
+  'roles.create',
+  'roles.edit',
+  'roles.delete',
 ] as const;
 
 const RESOURCE_CODES = [
@@ -42,6 +47,7 @@ const RESOURCE_CODES = [
   'address_books',
   'strategies',
   'audit',
+  'roles',
   'other',
 ] as const;
 
@@ -72,8 +78,6 @@ test.each(LOCALES)(
 
     for (const key of [
       ...RESOURCE_CODES.map((code) => `pages.roles.resource.${code}`),
-      'pages.roles.unknownResource',
-      'pages.roles.unknownPermission',
       'pages.roles.personalAddressBook',
       'pages.roles.basicFunction',
       'pages.roles.permissionPresets',
@@ -81,7 +85,7 @@ test.each(LOCALES)(
       ...ROLE_PERMISSION_PRESETS.map(({ key }) => `pages.roles.preset.${key}`),
       'pages.login.permissionsLoadFailed',
       'pages.users.superAdmin',
-      'pages.users.noRoles',
+      'pages.users.roleEligibility.super_admin_target',
       'pages.strategies.view',
       'pages.common.close',
       'pages.common.back',
@@ -102,7 +106,7 @@ test.each(LOCALES)(
   },
 );
 
-test('formats the user role column without an invented no-role label', () => {
+test('formats the user role column with virtual built-in identities', () => {
   expect(formatUserRoleNames({ is_admin: true }, 'Super admin')).toBe(
     'Super admin',
   );
@@ -113,6 +117,10 @@ test('formats the user role column without an invented no-role label', () => {
     ),
   ).toBe('Reader, Operator');
   expect(
-    formatUserRoleNames({ is_admin: false, role_names: [] }, 'Super admin'),
-  ).toBe('-');
+    formatUserRoleNames(
+      { is_admin: false, role_names: [] },
+      'Super admin',
+      'Ordinary user',
+    ),
+  ).toBe('Ordinary user');
 });

@@ -7,6 +7,19 @@ export function isCurrentUserTarget(
   return Boolean(currentUserGuid && currentUserGuid === targetUserGuid);
 }
 
+export function isRoleAssignmentTargetDisabled(
+  isSuperAdmin: boolean,
+  currentUserGuid: string | undefined,
+  target: Pick<API.UserItem, 'guid' | 'is_admin' | 'is_protected'>,
+): boolean {
+  return (
+    !isSuperAdmin &&
+    (target.is_admin === true ||
+      target.is_protected === true ||
+      isCurrentUserTarget(currentUserGuid, target.guid))
+  );
+}
+
 export type RoleAssignmentDraft = {
   key: string;
   role_guid: string;
@@ -55,7 +68,7 @@ export function preserveLockedAssignments(
 export const formatUserRoleNames = (
   user: Pick<API.UserItem, 'is_admin' | 'role_names'>,
   superAdminLabel: string,
-  ordinaryUserLabel = '-',
+  ordinaryUserLabel = 'Ordinary user',
 ): string =>
   user.is_admin
     ? superAdminLabel

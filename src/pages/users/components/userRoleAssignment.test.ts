@@ -6,6 +6,7 @@ import {
   getRoleEligibility,
   groupEffectivePermissionScopes,
   isCurrentUserTarget,
+  isRoleAssignmentTargetDisabled,
   preserveLockedAssignments,
   roleSupportsDeviceGroupScope,
   toReplaceUserRolesParams,
@@ -79,6 +80,44 @@ test('self target detection uses only the server current-user GUID', () => {
   expect(isCurrentUserTarget('user-a', 'user-a')).toBe(true);
   expect(isCurrentUserTarget('user-a', 'user-b')).toBe(false);
   expect(isCurrentUserTarget(undefined, 'user-a')).toBe(false);
+});
+
+test('non-super administrators cannot open role assignment for protected targets', () => {
+  expect(
+    isRoleAssignmentTargetDisabled(false, 'actor', {
+      guid: 'owner',
+      is_admin: true,
+      is_protected: false,
+    }),
+  ).toBe(true);
+  expect(
+    isRoleAssignmentTargetDisabled(false, 'actor', {
+      guid: 'protected',
+      is_admin: false,
+      is_protected: true,
+    }),
+  ).toBe(true);
+  expect(
+    isRoleAssignmentTargetDisabled(false, 'actor', {
+      guid: 'actor',
+      is_admin: false,
+      is_protected: false,
+    }),
+  ).toBe(true);
+  expect(
+    isRoleAssignmentTargetDisabled(false, 'actor', {
+      guid: 'ordinary',
+      is_admin: false,
+      is_protected: false,
+    }),
+  ).toBe(false);
+  expect(
+    isRoleAssignmentTargetDisabled(true, 'owner', {
+      guid: 'owner',
+      is_admin: true,
+      is_protected: true,
+    }),
+  ).toBe(false);
 });
 
 test('catalog metadata controls device-group scope eligibility', () => {

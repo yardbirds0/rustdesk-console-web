@@ -348,6 +348,7 @@ export default {
   'pages.roles.resource.address_books': 'Address books',
   'pages.roles.resource.strategies': 'Strategies',
   'pages.roles.resource.audit': 'Audit',
+  'pages.roles.resource.roles': 'Roles',
   'pages.roles.resource.other': 'Other',
   'pages.roles.unknownResource': 'Unknown resource',
   'pages.roles.unknownPermission': 'Unknown permission',
@@ -380,6 +381,11 @@ export default {
   'pages.roles.permission.strategies.delete': 'Delete strategies',
   'pages.roles.permission.strategies.assign': 'Assign strategies',
   'pages.roles.permission.audit.view': 'View audit logs',
+  'pages.roles.permission.roles.view': 'View roles',
+  'pages.roles.permission.roles.assign': 'Assign roles',
+  'pages.roles.permission.roles.create': 'Create roles',
+  'pages.roles.permission.roles.edit': 'Edit roles',
+  'pages.roles.permission.roles.delete': 'Delete roles',
   'pages.roles.create': 'Create Role',
   'pages.roles.view': 'View Role',
   'pages.roles.edit': 'Edit Role',
@@ -391,6 +397,10 @@ export default {
   'pages.roles.updateFailed': 'Failed to update role',
   'pages.roles.deleteSuccess': 'Role deleted successfully',
   'pages.roles.deleteFailed': 'Failed to delete role',
+  'pages.roles.systemIdentity.systemSettings': 'System settings',
+  'pages.roles.systemIdentity.deviceGroupStructure': 'Device-group structure',
+  'pages.roles.systemIdentity.identityAdministration':
+    'Identity administration',
   'pages.settings.save': 'Save Settings',
   'pages.settings.general': 'General Settings',
   'pages.settings.fetchFailed': 'Failed to load settings',
@@ -484,7 +494,6 @@ export default {
   'pages.users.rolesSaveFailed': 'Failed to save user roles',
   'pages.users.rolesSaved': 'User roles saved',
   'pages.users.addRole': 'Add role',
-  'pages.users.noRoles': 'No roles assigned',
   'pages.users.superAdmin': 'Super administrator',
   'pages.users.roleAssignmentTitle': 'Role {number}',
   'pages.users.selectRole': 'Select role',
@@ -521,6 +530,8 @@ export default {
     'Protected roles can only be assigned or removed by the super administrator',
   'pages.users.roleEligibility.protected_target':
     'The target account is protected',
+  'pages.users.roleEligibility.super_admin_target':
+    'Ordinary roles cannot be assigned to the super administrator',
   'pages.users.roleEligibility.self_target': 'You cannot change your own roles',
   'pages.users.roleEligibility.missing_caller_scope':
     'Your permission scope is insufficient',

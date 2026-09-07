@@ -27,7 +27,6 @@ import {
   Tooltip,
   Tree,
 } from 'antd';
-import type { DataNode } from 'antd/es/tree';
 import React, { useMemo, useRef, useState } from 'react';
 import { getPermissionList } from '@/services/rustdesk-console/permission';
 import {
@@ -43,6 +42,11 @@ import {
   addRequiredPermissions,
   removeDependentPermissions,
 } from './permissionDependencies';
+import {
+  buildRolePermissionTreeData,
+  getAssignablePermissionCodes,
+  PROTECTED_ACCOUNT_KEY,
+} from './permissionTree';
 import type { RolePermissionPresetSelection } from './rbacPresentation';
 import {
   applyRolePermissionPreset,
@@ -52,8 +56,6 @@ import {
   presetEnablesProtection,
   ROLE_PERMISSION_PRESETS,
 } from './rbacPresentation';
-
-const PROTECTED_ACCOUNT_KEY = 'builtin.protected-account';
 
 const RoleList: React.FC = () => {
   const intl = useIntl();
@@ -102,7 +104,7 @@ const RoleList: React.FC = () => {
   };
 
   const permissionCodes = useMemo(
-    () => new Set(catalog.map((permission) => permission.code)),
+    () => getAssignablePermissionCodes(catalog),
     [catalog],
   );
   const selectedPreset = useMemo(
@@ -111,89 +113,17 @@ const RoleList: React.FC = () => {
     [catalog, checkedKeys, protectedAccount],
   );
 
-  const treeData = useMemo<DataNode[]>(() => {
-    const unknownResource = intl.formatMessage({
-      id: 'pages.roles.unknownResource',
-      defaultMessage: 'Unknown resource',
-    });
-    const unknownPermission = intl.formatMessage({
-      id: 'pages.roles.unknownPermission',
-      defaultMessage: 'Unknown permission',
-    });
-    const grouped = new Map<string, API.PermissionItem[]>();
-    for (const permission of catalog) {
-      const resource = permission.resource;
-      const values = grouped.get(resource) || [];
-      values.push(permission);
-      grouped.set(resource, values);
-    }
-    return [...grouped.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([resource, values]) => {
-        const children: DataNode[] = values
-          .sort((a, b) => a.code.localeCompare(b.code))
-          .map((permission) => {
-            const code = permission.code;
-            return {
-              key: code,
-              title: intl.formatMessage({
-                id: `pages.roles.permission.${code}`,
-                defaultMessage: unknownPermission,
-              }),
-            };
-          });
-        if (resource === 'users') {
-          children.push({
-            key: PROTECTED_ACCOUNT_KEY,
-            title: (
-              <Space size={6}>
-                <FormattedMessage
-                  id="pages.roles.protectedAccount"
-                  defaultMessage="Protected accounts"
-                />
-                <Tooltip
-                  title={intl.formatMessage({
-                    id: 'pages.roles.protectedAccountInfo',
-                    defaultMessage:
-                      'Members cannot be managed by anyone except the super administrator.',
-                  })}
-                >
-                  <InfoCircleOutlined />
-                </Tooltip>
-              </Space>
-            ),
-          });
-        }
-        if (resource === 'address_books') {
-          children.unshift({
-            key: PERSONAL_ADDRESS_BOOK_KEY,
-            title: (
-              <Space size={6}>
-                <FormattedMessage
-                  id="pages.roles.personalAddressBook"
-                  defaultMessage="Personal address book"
-                />
-                <Tag>
-                  <FormattedMessage
-                    id="pages.roles.basicFunction"
-                    defaultMessage="Basic feature"
-                  />
-                </Tag>
-              </Space>
-            ),
-            disableCheckbox: true,
-          });
-        }
-        return {
-          key: `resource:${resource}`,
-          title: intl.formatMessage({
-            id: `pages.roles.resource.${resource}`,
-            defaultMessage: unknownResource,
-          }),
-          children,
-        };
-      });
-  }, [catalog, intl]);
+  const treeData = useMemo(
+    () =>
+      buildRolePermissionTreeData(
+        catalog,
+        (message) => intl.formatMessage(message),
+        {
+          includeBuiltInRows: true,
+        },
+      ),
+    [catalog, intl],
+  );
 
   const closeModal = () => {
     detailRequestRef.current += 1;
@@ -242,9 +172,7 @@ const RoleList: React.FC = () => {
       setProtectedAccount(detail.protected_account === true);
       setRoleMemberCount(detail.member_count || record.member_count || 0);
       setEditingRole({ ...record, ...detail });
-      const validCodes = new Set(
-        loadedCatalog.map((permission) => permission.code),
-      );
+      const validCodes = getAssignablePermissionCodes(loadedCatalog);
       setCheckedKeys(detail.permissions.filter((code) => validCodes.has(code)));
     } catch (error) {
       if (requestId !== detailRequestRef.current) return;
@@ -884,9 +812,16 @@ const RoleList: React.FC = () => {
                       }),
                     ),
                     intl.formatMessage({
-                      id: 'pages.roles.systemIdentity.systemCapabilities',
-                      defaultMessage:
-                        'Role definition, system settings, device-group structure and identity administration',
+                      id: 'pages.roles.systemIdentity.systemSettings',
+                      defaultMessage: 'System settings',
+                    }),
+                    intl.formatMessage({
+                      id: 'pages.roles.systemIdentity.deviceGroupStructure',
+                      defaultMessage: 'Device-group structure',
+                    }),
+                    intl.formatMessage({
+                      id: 'pages.roles.systemIdentity.identityAdministration',
+                      defaultMessage: 'Identity administration',
                     }),
                   ]
             }
