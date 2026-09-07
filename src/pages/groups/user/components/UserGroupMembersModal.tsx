@@ -2,7 +2,7 @@ import { SwapOutlined, UsergroupAddOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import { FormattedMessage, useIntl } from '@umijs/max';
-import { App, Button, Modal, Select, Tabs } from 'antd';
+import { App, Button, Modal, Select, Tabs, Tooltip } from 'antd';
 import React, { useEffect, useRef, useState } from 'react';
 import { getAdminUserList } from '@/services/rustdesk-console/user';
 import {
@@ -10,6 +10,10 @@ import {
   getUserGroupUsers,
   moveUsersToGroup,
 } from '@/services/rustdesk-console/userGroup';
+import {
+  filterManageableSelection,
+  isCurrentRequest,
+} from './userGroupMemberSelection';
 
 interface UserGroupMembersModalProps {
   open: boolean;
@@ -38,16 +42,47 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
   const [userKeys, setUserKeys] = useState<React.Key[]>([]);
   const [destinationGuid, setDestinationGuid] = useState<string>();
   const [moving, setMoving] = useState(false);
+  const requestVersionRef = useRef(0);
+  const [memberRows, setMemberRows] = useState<API.UserItem[]>([]);
+  const [userRows, setUserRows] = useState<API.UserItem[]>([]);
+  const protectedAccountInfo = intl.formatMessage({
+    id: 'pages.users.protectedAccountInfo',
+    defaultMessage:
+      'Protected accounts can only be managed by the super administrator.',
+  });
 
   useEffect(() => {
-    if (!open) return;
+    setMemberKeys((keys) =>
+      filterManageableSelection(keys, memberRows, isSuperAdmin),
+    );
+  }, [isSuperAdmin, memberRows]);
+
+  useEffect(() => {
+    setUserKeys((keys) =>
+      filterManageableSelection(keys, userRows, isSuperAdmin),
+    );
+  }, [isSuperAdmin, userRows]);
+
+  useEffect(() => {
+    const requestVersion = ++requestVersionRef.current;
     setMemberKeys([]);
     setUserKeys([]);
     setDestinationGuid(undefined);
+    setMemberRows([]);
+    setUserRows([]);
+    setGroupsLoading(false);
+    setMoving(false);
+    if (!open) return;
     setGroupsLoading(true);
     getAllUserGroups()
-      .then(setGroups)
+      .then((nextGroups) => {
+        if (isCurrentRequest(requestVersion, requestVersionRef.current)) {
+          setGroups(nextGroups);
+        }
+      })
       .catch(() => {
+        if (!isCurrentRequest(requestVersion, requestVersionRef.current))
+          return;
         msgApi.error(
           intl.formatMessage({
             id: 'pages.userGroups.loadFailed',
@@ -55,14 +90,40 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
           }),
         );
       })
-      .finally(() => setGroupsLoading(false));
-  }, [open, group?.guid]);
+      .finally(() => {
+        if (isCurrentRequest(requestVersion, requestVersionRef.current)) {
+          setGroupsLoading(false);
+        }
+      });
+    return () => {
+      requestVersionRef.current += 1;
+    };
+  }, [group?.guid, intl, msgApi, open]);
 
   const handleMove = async (targetGuid: string, keys: React.Key[]) => {
-    if (!group || keys.length === 0) return;
+    const rows = [...memberRows, ...userRows];
+    const manageableKeys = filterManageableSelection(keys, rows, isSuperAdmin);
+    if (
+      !group ||
+      manageableKeys.length === 0 ||
+      manageableKeys.length !== keys.length ||
+      (!isSuperAdmin &&
+        !manageableKeys.every((key) =>
+          rows.some((row) => row.guid === String(key)),
+        ))
+    ) {
+      setMemberKeys([]);
+      setUserKeys([]);
+      return;
+    }
+    const requestVersion = requestVersionRef.current;
     setMoving(true);
     try {
-      const result = await moveUsersToGroup(targetGuid, keys.map(String));
+      const result = await moveUsersToGroup(
+        targetGuid,
+        manageableKeys.map(String),
+      );
+      if (!isCurrentRequest(requestVersion, requestVersionRef.current)) return;
       msgApi.success(
         intl.formatMessage(
           {
@@ -79,6 +140,7 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
       usersActionRef.current?.reload();
       onChanged();
     } catch {
+      if (!isCurrentRequest(requestVersion, requestVersionRef.current)) return;
       msgApi.error(
         intl.formatMessage({
           id: 'pages.userGroups.membersUpdateFailed',
@@ -86,7 +148,9 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
         }),
       );
     } finally {
-      setMoving(false);
+      if (isCurrentRequest(requestVersion, requestVersionRef.current)) {
+        setMoving(false);
+      }
     }
   };
 
@@ -123,11 +187,16 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
       size="small"
       request={async (params) => {
         if (!group) return { data: [], total: 0, success: true };
+        const requestVersion = requestVersionRef.current;
         const result = await getUserGroupUsers(group.guid, {
           current: params.current,
           pageSize: params.pageSize,
           search: params.name,
         });
+        if (!isCurrentRequest(requestVersion, requestVersionRef.current)) {
+          return { data: [], total: 0, success: false };
+        }
+        setMemberRows(result.data);
         return {
           data: result.data,
           total: result.total,
@@ -141,9 +210,13 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
         selectedRowKeys: memberKeys,
         preserveSelectedRowKeys: true,
         getCheckboxProps: (record) => ({
-          disabled: !isSuperAdmin && record.is_admin,
+          disabled:
+            !isSuperAdmin && (record.is_admin || record.is_protected === true),
         }),
-        onChange: setMemberKeys,
+        onChange: (keys) =>
+          setMemberKeys(
+            filterManageableSelection(keys, memberRows, isSuperAdmin),
+          ),
       }}
       tableAlertRender={false}
       search={{ filterType: 'light' }}
@@ -168,21 +241,33 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
             .map((item) => ({ label: item.name, value: item.guid }))}
           style={{ width: 200 }}
         />,
-        <Button
-          key="move"
-          type="primary"
-          icon={<SwapOutlined />}
-          disabled={!destinationGuid || memberKeys.length === 0}
-          loading={moving}
-          onClick={() =>
-            destinationGuid && handleMove(destinationGuid, memberKeys)
+        <Tooltip
+          key="move-tip"
+          title={
+            memberKeys.length === 0 &&
+            memberRows.some((row) => row.is_protected)
+              ? protectedAccountInfo
+              : undefined
           }
         >
-          <FormattedMessage
-            id="pages.userGroups.moveSelected"
-            defaultMessage="Move selected"
-          />
-        </Button>,
+          <span>
+            <Button
+              key="move"
+              type="primary"
+              icon={<SwapOutlined />}
+              disabled={!destinationGuid || memberKeys.length === 0}
+              loading={moving}
+              onClick={() =>
+                destinationGuid && handleMove(destinationGuid, memberKeys)
+              }
+            >
+              <FormattedMessage
+                id="pages.userGroups.moveSelected"
+                defaultMessage="Move selected"
+              />
+            </Button>
+          </span>
+        </Tooltip>,
       ]}
       scroll={{ x: 620 }}
     />
@@ -194,12 +279,17 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
       rowKey="guid"
       size="small"
       request={async (params) => {
+        const requestVersion = requestVersionRef.current;
         const result = await getAdminUserList({
           current: params.current || 1,
           pageSize: params.pageSize || 10,
           name: params.name,
           email: params.email,
         });
+        if (!isCurrentRequest(requestVersion, requestVersionRef.current)) {
+          return { data: [], total: 0, success: false };
+        }
+        setUserRows(result.data);
         return {
           data: result.data,
           total: result.total,
@@ -213,28 +303,41 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
         getCheckboxProps: (record) => ({
           disabled:
             record.user_group_guid === group?.guid ||
-            (!isSuperAdmin && record.is_admin),
+            (!isSuperAdmin &&
+              (record.is_admin || record.is_protected === true)),
         }),
-        onChange: setUserKeys,
+        onChange: (keys) =>
+          setUserKeys(filterManageableSelection(keys, userRows, isSuperAdmin)),
       }}
       tableAlertRender={false}
       search={{ filterType: 'light' }}
       pagination={{ defaultPageSize: 10, showSizeChanger: true }}
       options={{ density: false, setting: false, reload: true }}
       toolBarRender={() => [
-        <Button
-          key="add"
-          type="primary"
-          icon={<UsergroupAddOutlined />}
-          disabled={!group || userKeys.length === 0}
-          loading={moving}
-          onClick={() => group && handleMove(group.guid, userKeys)}
+        <Tooltip
+          key="add-tip"
+          title={
+            userKeys.length === 0 && userRows.some((row) => row.is_protected)
+              ? protectedAccountInfo
+              : undefined
+          }
         >
-          <FormattedMessage
-            id="pages.userGroups.addSelected"
-            defaultMessage="Add selected users"
-          />
-        </Button>,
+          <span>
+            <Button
+              key="add"
+              type="primary"
+              icon={<UsergroupAddOutlined />}
+              disabled={!group || userKeys.length === 0}
+              loading={moving}
+              onClick={() => group && handleMove(group.guid, userKeys)}
+            >
+              <FormattedMessage
+                id="pages.userGroups.addSelected"
+                defaultMessage="Add selected users"
+              />
+            </Button>
+          </span>
+        </Tooltip>,
       ]}
       scroll={{ x: 620 }}
     />
@@ -253,7 +356,10 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
       width={780}
       footer={null}
       destroyOnHidden
-      onCancel={() => onOpenChange(false)}
+      onCancel={() => {
+        requestVersionRef.current += 1;
+        onOpenChange(false);
+      }}
     >
       <Tabs
         size="small"

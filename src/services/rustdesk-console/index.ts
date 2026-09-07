@@ -1,6 +1,10 @@
 export { login, logout, currentUser } from './auth';
 export { getPermissionList, getMyPermissions } from './permission';
-export { getUserRoles, replaceUserRoles } from './userRole';
+export {
+  getUserRoles,
+  getUserRoleEligibility,
+  replaceUserRoles,
+} from './userRole';
 export {
   updateProfile,
   uploadAvatar,

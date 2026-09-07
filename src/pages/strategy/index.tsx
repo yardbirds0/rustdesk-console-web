@@ -231,6 +231,7 @@ const StrategyList: React.FC = () => {
             initialState?.permissions?.scopes['strategies.assign']
               ?.scope_type === 'global'
           }
+          isSuperAdmin={access.isSuperAdmin}
           onSuccess={() => actionRef.current?.reload()}
         />
       )}

@@ -1,17 +1,18 @@
-import type { ProColumns } from '@ant-design/pro-components';
-import { FormattedMessage, useIntl } from '@umijs/max';
-import { Button, Divider, Popconfirm, Space } from 'antd';
 import {
   DeleteOutlined,
   EditOutlined,
   LogoutOutlined,
+  SafetyCertificateOutlined,
   SafetyOutlined,
   SwapOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
+import type { ProColumns } from '@ant-design/pro-components';
+import { FormattedMessage, useIntl } from '@umijs/max';
+import { Button, Divider, Popconfirm, Space, Tooltip } from 'antd';
 import React from 'react';
 import { getUserColumns } from '@/components/UserSelectTable/columns';
-import { formatUserRoleNames } from './userRoleAssignment';
+import { formatUserRoleNames, isCurrentUserTarget } from './userRoleAssignment';
 
 interface UseUserColumnsOptions {
   userGroupGuid?: string;
@@ -21,6 +22,10 @@ interface UseUserColumnsOptions {
   canForceLogout: boolean;
   canDelete: boolean;
   canMove: boolean;
+  canRolesAssign: boolean;
+  canRolesView: boolean;
+  canUsersView: boolean;
+  currentUserGuid?: string;
   onEdit: (record: API.UserItem) => void;
   onRoles: (record: API.UserItem) => void;
   onSecurity: (record: API.UserItem) => void;
@@ -41,6 +46,10 @@ export const useUserColumns = (
     canForceLogout,
     canDelete,
     canMove,
+    canRolesAssign,
+    canRolesView,
+    canUsersView,
+    currentUserGuid,
     onEdit,
     onRoles,
     onSecurity,
@@ -50,6 +59,14 @@ export const useUserColumns = (
   } = options;
 
   const baseColumns = getUserColumns();
+  const protectedTooltip = (record: API.UserItem) =>
+    !isSuperAdmin && record.is_protected === true
+      ? intl.formatMessage({
+          id: 'pages.users.protectedAccountInfo',
+          defaultMessage:
+            'Protected accounts can only be managed by the super administrator.',
+        })
+      : undefined;
 
   const actionColumn: ProColumns<API.UserItem> = {
     title: (
@@ -64,73 +81,138 @@ export const useUserColumns = (
         !canEdit &&
         !canSecurity &&
         !canForceLogout &&
-        !canDelete,
+        !canDelete &&
+        !canRolesAssign,
     render: (_: unknown, record: API.UserItem) =>
       userGroupGuid ? (
         canMove ? (
-          <Button
-            type="link"
-            size="small"
-            icon={<SwapOutlined />}
-            onClick={() => onMove(record)}
-          >
-            <FormattedMessage
-              id="pages.userGroups.move"
-              defaultMessage="Move"
-            />
-          </Button>
+          <Tooltip title={protectedTooltip(record)}>
+            <span>
+              <Button
+                type="link"
+                size="small"
+                icon={<SwapOutlined />}
+                onClick={() => onMove(record)}
+                disabled={!isSuperAdmin && record.is_protected === true}
+              >
+                <FormattedMessage
+                  id="pages.userGroups.move"
+                  defaultMessage="Move"
+                />
+              </Button>
+            </span>
+          </Tooltip>
         ) : null
       ) : (
         <Space size={0} split={<Divider type="vertical" />}>
-          {canEdit && (isSuperAdmin || !record.is_admin) && (
-            <Button
-              key="edit"
-              type="link"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => onEdit(record)}
+          {record.is_protected && (
+            <Tooltip
+              title={intl.formatMessage({
+                id: 'pages.users.protectedAccountInfo',
+                defaultMessage:
+                  'Protected accounts can only be managed by the super administrator.',
+              })}
             >
-              <FormattedMessage id="pages.common.edit" defaultMessage="Edit" />
-            </Button>
+              <SafetyCertificateOutlined
+                aria-label={intl.formatMessage({
+                  id: 'pages.users.protectedAccount',
+                  defaultMessage: 'Protected account',
+                })}
+              />
+            </Tooltip>
           )}
-          {isSuperAdmin && (
-            <Button
-              key="roles"
-              type="link"
-              size="small"
-              icon={<TeamOutlined />}
-              onClick={() => onRoles(record)}
+          {canEdit && (isSuperAdmin || !record.is_admin) && (
+            <Tooltip title={protectedTooltip(record)}>
+              <span>
+                <Button
+                  key="edit"
+                  type="link"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => onEdit(record)}
+                  disabled={!isSuperAdmin && record.is_protected === true}
+                >
+                  <FormattedMessage
+                    id="pages.common.edit"
+                    defaultMessage="Edit"
+                  />
+                </Button>
+              </span>
+            </Tooltip>
+          )}
+          {(isSuperAdmin || canRolesAssign) && (
+            <Tooltip
+              title={
+                !isSuperAdmin &&
+                (record.is_protected ||
+                  isCurrentUserTarget(currentUserGuid, record.guid))
+                  ? intl.formatMessage({
+                      id: isCurrentUserTarget(currentUserGuid, record.guid)
+                        ? 'pages.users.roleEligibility.self_target'
+                        : 'pages.users.roleEligibility.protected_target',
+                      defaultMessage: 'Role assignment is unavailable',
+                    })
+                  : undefined
+              }
             >
-              <FormattedMessage id="pages.users.roles" defaultMessage="Roles" />
-            </Button>
+              <span>
+                <Button
+                  key="roles"
+                  type="link"
+                  size="small"
+                  icon={<TeamOutlined />}
+                  onClick={() => onRoles(record)}
+                  disabled={
+                    !isSuperAdmin &&
+                    (record.is_protected === true ||
+                      isCurrentUserTarget(currentUserGuid, record.guid))
+                  }
+                >
+                  <FormattedMessage
+                    id="pages.users.roles"
+                    defaultMessage="Roles"
+                  />
+                </Button>
+              </span>
+            </Tooltip>
           )}
           {canSecurity && (isSuperAdmin || !record.is_admin) && (
-            <Button
-              key="security"
-              type="link"
-              size="small"
-              icon={<SafetyOutlined />}
-              onClick={() => onSecurity(record)}
-            >
-              <FormattedMessage
-                id="pages.users.security"
-                defaultMessage="Security"
-              />
-            </Button>
+            <Tooltip title={protectedTooltip(record)}>
+              <span>
+                <Button
+                  key="security"
+                  type="link"
+                  size="small"
+                  icon={<SafetyOutlined />}
+                  onClick={() => onSecurity(record)}
+                  disabled={!isSuperAdmin && record.is_protected === true}
+                >
+                  <FormattedMessage
+                    id="pages.users.security"
+                    defaultMessage="Security"
+                  />
+                </Button>
+              </span>
+            </Tooltip>
           )}
           {canForceLogout && (isSuperAdmin || !record.is_admin) && (
-            <Button
-              key="logout"
-              type="link"
-              size="small"
-              icon={<LogoutOutlined />}
-              onClick={() => onForceLogout(record.guid)}
-            >
-              <FormattedMessage
-                id="pages.users.forceLogout"
-                defaultMessage="Logout"
-              />
-            </Button>
+            <Tooltip title={protectedTooltip(record)}>
+              <span>
+                <Button
+                  key="logout"
+                  type="link"
+                  size="small"
+                  icon={<LogoutOutlined />}
+                  onClick={() => onForceLogout(record.guid)}
+                  disabled={!isSuperAdmin && record.is_protected === true}
+                >
+                  <FormattedMessage
+                    id="pages.users.forceLogout"
+                    defaultMessage="Logout"
+                  />
+                </Button>
+              </span>
+            </Tooltip>
           )}
           {canDelete && (isSuperAdmin || !record.is_admin) && (
             <Popconfirm
@@ -151,12 +233,22 @@ export const useUserColumns = (
                 defaultMessage: 'No',
               })}
             >
-              <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-                <FormattedMessage
-                  id="pages.common.delete"
-                  defaultMessage="Delete"
-                />
-              </Button>
+              <Tooltip title={protectedTooltip(record)}>
+                <span>
+                  <Button
+                    type="link"
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    disabled={!isSuperAdmin && record.is_protected === true}
+                  >
+                    <FormattedMessage
+                      id="pages.common.delete"
+                      defaultMessage="Delete"
+                    />
+                  </Button>
+                </span>
+              </Tooltip>
             </Popconfirm>
           )}
         </Space>
@@ -176,8 +268,16 @@ export const useUserColumns = (
           id: 'pages.users.superAdmin',
           defaultMessage: 'Super administrator',
         }),
+        intl.formatMessage({
+          id: 'pages.users.normalUser',
+          defaultMessage: 'Ordinary user',
+        }),
       ),
   };
 
-  return [...baseColumns, ...(isSuperAdmin ? [roleColumn] : []), actionColumn];
+  return [
+    ...baseColumns,
+    ...(isSuperAdmin || canRolesView || canUsersView ? [roleColumn] : []),
+    actionColumn,
+  ];
 };

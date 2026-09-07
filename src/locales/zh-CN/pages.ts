@@ -300,7 +300,23 @@ export default {
   'pages.roles.preset.sharedAddressBookAdministrator': '共享地址簿管理员',
   'pages.roles.preset.strategyMaintainer': '策略维护员',
   'pages.roles.preset.deviceStrategyAssigner': '设备策略分配员',
-  'pages.roles.preset.full': '完整权限',
+  'pages.roles.preset.systemAdministrator': '系统管理员',
+  'pages.roles.protectedAccount': '受保护账号',
+  'pages.roles.protectedAccountInfo':
+    '除超级管理员外，其他管理员不能管理受保护账号。',
+  'pages.roles.ownerOnly': '仅超级管理员',
+  'pages.roles.systemIdentity.ordinary': '普通用户',
+  'pages.roles.systemIdentity.superAdmin': '超级管理员',
+  'pages.roles.systemIdentity.builtIn': '系统内置',
+  'pages.roles.systemIdentity.view': '查看',
+  'pages.roles.systemIdentity.ordinarySummary': '仅提供个人地址簿基本功能。',
+  'pages.roles.systemIdentity.superAdminSummary':
+    '唯一系统所有者的完整有效权限。',
+  'pages.roles.systemIdentity.systemCapabilities':
+    '角色定义、系统设置、设备组结构和身份管理',
+  'pages.roles.disableProtectionConfirm': '确定要取消此角色的账号保护吗？',
+  'pages.roles.disableProtectionAffected':
+    '{count} 个成员将可由受委派管理员管理。',
   'pages.roles.resource.users': '用户',
   'pages.roles.resource.user_groups': '用户组',
   'pages.roles.resource.devices': '设备',
@@ -337,6 +353,7 @@ export default {
   'pages.roles.permission.strategies.assign': '分配策略',
   'pages.roles.permission.audit.view': '查看审计日志',
   'pages.roles.create': '创建角色',
+  'pages.roles.view': '查看角色',
   'pages.roles.edit': '编辑角色',
   'pages.roles.deleteConfirm': '确定要删除此角色吗？',
   'pages.roles.selectPermissions': '选择权限',
@@ -451,6 +468,29 @@ export default {
     '仅包含设备操作和策略分配权限的角色可使用设备组范围',
   'pages.users.deviceGroupScopeRequired': '请至少选择一个设备组',
   'pages.users.rolesScopeInfo': '全局授权会覆盖范围更小的设备组授权。',
+  'pages.users.protectedAccount': '受保护账号',
+  'pages.users.protectedAccountInfo': '受保护账号只能由超级管理员管理。',
+  'pages.users.systemCapabilities': '系统能力',
+  'pages.users.systemCapability.roles.create': '创建角色定义',
+  'pages.users.systemCapability.roles.edit': '编辑角色定义',
+  'pages.users.systemCapability.roles.delete': '删除角色定义',
+  'pages.users.systemCapability.settings.manage': '管理系统设置',
+  'pages.users.systemCapability.device_groups.manage': '管理设备组结构',
+  'pages.users.systemCapability.identity_sources.manage': '管理身份源',
+  'pages.users.roleEligibility.assign_not_allowed': '当前管理员不能分配此角色',
+  'pages.users.roleEligibility.remove_not_allowed': '当前管理员不能移除此角色',
+  'pages.users.roleEligibility.protected_role':
+    '受保护角色只能由超级管理员分配或移除',
+  'pages.users.roleEligibility.protected_target': '目标账号受到保护',
+  'pages.users.roleEligibility.self_target': '不能修改自己的角色',
+  'pages.users.roleEligibility.missing_caller_scope':
+    '当前管理员没有所需权限范围',
+  'pages.users.roleEligibility.scope_exceeds_caller':
+    '角色范围超出当前管理员权限',
+  'pages.users.roleEligibility.missing_permission':
+    '当前管理员缺少角色所需权限',
+  'pages.users.roleEligibility.role_grants_roles_assign':
+    '包含角色分配权限的角色只能由超级管理员管理',
   'pages.users.effectiveScope': '实际生效范围',
   'pages.users.strategy': '策略',
   'pages.users.invite': '邀请用户',

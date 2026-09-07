@@ -345,7 +345,24 @@ export default {
   'pages.roles.preset.strategyMaintainer': 'Responsável por estratégias',
   'pages.roles.preset.deviceStrategyAssigner':
     'Atribuidor de estratégias a dispositivos',
-  'pages.roles.preset.full': 'Permissões completas',
+  'pages.roles.preset.systemAdministrator': 'Administrador do sistema',
+  'pages.roles.protectedAccount': 'Contas protegidas',
+  'pages.roles.protectedAccountInfo':
+    'Somente o superadministrador pode gerenciar contas protegidas.',
+  'pages.roles.ownerOnly': 'Somente superadministrador',
+  'pages.roles.systemIdentity.ordinary': 'Usuário comum',
+  'pages.roles.systemIdentity.superAdmin': 'Superadministrador',
+  'pages.roles.systemIdentity.builtIn': 'Integrado ao sistema',
+  'pages.roles.systemIdentity.view': 'Visualizar',
+  'pages.roles.systemIdentity.ordinarySummary':
+    'Somente a funcionalidade básica da agenda pessoal.',
+  'pages.roles.systemIdentity.superAdminSummary':
+    'Autoridade efetiva completa do único proprietário do sistema.',
+  'pages.roles.systemIdentity.systemCapabilities':
+    'Definição de funções, configurações do sistema, estrutura de grupos de dispositivos e administração de identidades',
+  'pages.roles.disableProtectionConfirm': 'Desativar a proteção desta função?',
+  'pages.roles.disableProtectionAffected':
+    '{count} membros poderão ser gerenciados por administradores delegados.',
   'pages.roles.resource.users': 'Usuários',
   'pages.roles.resource.user_groups': 'Grupos de usuários',
   'pages.roles.resource.devices': 'Dispositivos',
@@ -386,6 +403,7 @@ export default {
   'pages.roles.permission.strategies.assign': 'Atribuir estratégias',
   'pages.roles.permission.audit.view': 'Visualizar logs de auditoria',
   'pages.roles.create': 'Criar Função',
+  'pages.roles.view': 'Ver função',
   'pages.roles.edit': 'Editar Função',
   'pages.roles.deleteConfirm': 'Tem certeza de que deseja excluir esta função?',
   'pages.roles.selectPermissions': 'Selecionar Permissões',
@@ -509,6 +527,37 @@ export default {
     'Selecione pelo menos um grupo de dispositivos',
   'pages.users.rolesScopeInfo':
     'Concessões globais prevalecem sobre concessões mais restritas por grupo de dispositivos.',
+  'pages.users.protectedAccount': 'Conta protegida',
+  'pages.users.protectedAccountInfo':
+    'Contas protegidas só podem ser gerenciadas pelo superadministrador.',
+  'pages.users.systemCapabilities': 'Capacidades do sistema',
+  'pages.users.systemCapability.roles.create': 'Criar definições de função',
+  'pages.users.systemCapability.roles.edit': 'Editar definições de função',
+  'pages.users.systemCapability.roles.delete': 'Excluir definições de função',
+  'pages.users.systemCapability.settings.manage':
+    'Gerenciar configurações do sistema',
+  'pages.users.systemCapability.device_groups.manage':
+    'Gerenciar estrutura de grupos de dispositivos',
+  'pages.users.systemCapability.identity_sources.manage':
+    'Gerenciar fontes de identidade',
+  'pages.users.roleEligibility.assign_not_allowed':
+    'Você não pode atribuir esta função',
+  'pages.users.roleEligibility.remove_not_allowed':
+    'Você não pode remover esta função',
+  'pages.users.roleEligibility.protected_role':
+    'Funções protegidas só podem ser atribuídas ou removidas pelo superadministrador',
+  'pages.users.roleEligibility.protected_target':
+    'A conta de destino está protegida',
+  'pages.users.roleEligibility.self_target':
+    'Você não pode alterar suas próprias funções',
+  'pages.users.roleEligibility.missing_caller_scope':
+    'O escopo de permissão é insuficiente',
+  'pages.users.roleEligibility.scope_exceeds_caller':
+    'O escopo da função excede suas permissões',
+  'pages.users.roleEligibility.missing_permission':
+    'Falta uma permissão exigida por esta função',
+  'pages.users.roleEligibility.role_grants_roles_assign':
+    'Funções que concedem atribuição de funções só podem ser gerenciadas pelo superadministrador',
   'pages.users.effectiveScope': 'Escopo efetivo',
   'pages.users.strategy': 'Estratégia',
   'pages.users.invite': 'Convidar Usuário',

@@ -3,7 +3,10 @@ import type { RoleAssignmentDraft } from './userRoleAssignment';
 import {
   changeAssignmentScope,
   deriveEffectivePermissionScopes,
+  getRoleEligibility,
   groupEffectivePermissionScopes,
+  isCurrentUserTarget,
+  preserveLockedAssignments,
   roleSupportsDeviceGroupScope,
   toReplaceUserRolesParams,
   validateAssignments,
@@ -41,6 +44,41 @@ test('global and device-group modes are mutually exclusive', () => {
       },
     ],
   });
+});
+
+test('locked existing assignments are preserved when editable choices change', () => {
+  const locked: RoleAssignmentDraft = {
+    key: 'locked',
+    role_guid: 'protected-role',
+    scope_type: 'global',
+    device_group_guids: [],
+    locked: true,
+  };
+  const editable: RoleAssignmentDraft = {
+    key: 'editable',
+    role_guid: 'editable-role',
+    scope_type: 'global',
+    device_group_guids: [],
+  };
+  expect(
+    preserveLockedAssignments(
+      [{ ...editable, role_guid: 'new-role' }],
+      [locked, editable],
+    ),
+  ).toEqual([{ ...editable, role_guid: 'new-role' }, locked]);
+});
+
+test('missing eligibility fails closed with a stable reason', () => {
+  const result = getRoleEligibility('role-a', new Map());
+  expect(result.can_assign).toBe(false);
+  expect(result.can_remove).toBe(false);
+  expect(result.reason_code).toBe('assign_not_allowed');
+});
+
+test('self target detection uses only the server current-user GUID', () => {
+  expect(isCurrentUserTarget('user-a', 'user-a')).toBe(true);
+  expect(isCurrentUserTarget('user-a', 'user-b')).toBe(false);
+  expect(isCurrentUserTarget(undefined, 'user-a')).toBe(false);
 });
 
 test('catalog metadata controls device-group scope eligibility', () => {

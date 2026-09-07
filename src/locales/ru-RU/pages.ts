@@ -338,7 +338,24 @@ export default {
   'pages.roles.preset.strategyMaintainer': 'Редактор стратегий',
   'pages.roles.preset.deviceStrategyAssigner':
     'Назначение стратегий устройствам',
-  'pages.roles.preset.full': 'Полные права',
+  'pages.roles.preset.systemAdministrator': 'Системный администратор',
+  'pages.roles.protectedAccount': 'Защищённые аккаунты',
+  'pages.roles.protectedAccountInfo':
+    'Управлять защищёнными аккаунтами может только суперадминистратор.',
+  'pages.roles.ownerOnly': 'Только суперадминистратор',
+  'pages.roles.systemIdentity.ordinary': 'Обычный пользователь',
+  'pages.roles.systemIdentity.superAdmin': 'Суперадминистратор',
+  'pages.roles.systemIdentity.builtIn': 'Встроенная система',
+  'pages.roles.systemIdentity.view': 'Просмотр',
+  'pages.roles.systemIdentity.ordinarySummary':
+    'Только базовые функции личной адресной книги.',
+  'pages.roles.systemIdentity.superAdminSummary':
+    'Полные эффективные полномочия единственного владельца системы.',
+  'pages.roles.systemIdentity.systemCapabilities':
+    'Определение ролей, системные настройки, структура групп устройств и управление идентификацией',
+  'pages.roles.disableProtectionConfirm': 'Отключить защиту этой роли?',
+  'pages.roles.disableProtectionAffected':
+    'Участники: {count}; ими смогут управлять делегированные администраторы.',
   'pages.roles.resource.users': 'Пользователи',
   'pages.roles.resource.user_groups': 'Группы пользователей',
   'pages.roles.resource.devices': 'Устройства',
@@ -382,6 +399,7 @@ export default {
   'pages.roles.permission.strategies.assign': 'Назначение стратегий',
   'pages.roles.permission.audit.view': 'Просмотр журналов аудита',
   'pages.roles.create': 'Создать роль',
+  'pages.roles.view': 'Просмотр роли',
   'pages.roles.edit': 'Редактировать роль',
   'pages.roles.deleteConfirm': 'Вы уверены, что хотите удалить эту роль?',
   'pages.roles.selectPermissions': 'Выберите права',
@@ -506,6 +524,35 @@ export default {
     'Выберите хотя бы одну группу устройств',
   'pages.users.rolesScopeInfo':
     'Глобальные права перекрывают права для отдельных групп устройств.',
+  'pages.users.protectedAccount': 'Защищённый аккаунт',
+  'pages.users.protectedAccountInfo':
+    'Управлять защищёнными аккаунтами может только суперадминистратор.',
+  'pages.users.systemCapabilities': 'Системные возможности',
+  'pages.users.systemCapability.roles.create': 'Создание определений ролей',
+  'pages.users.systemCapability.roles.edit': 'Изменение определений ролей',
+  'pages.users.systemCapability.roles.delete': 'Удаление определений ролей',
+  'pages.users.systemCapability.settings.manage':
+    'Управление системными настройками',
+  'pages.users.systemCapability.device_groups.manage':
+    'Управление структурой групп устройств',
+  'pages.users.systemCapability.identity_sources.manage':
+    'Управление источниками удостоверений',
+  'pages.users.roleEligibility.assign_not_allowed':
+    'Вы не можете назначить эту роль',
+  'pages.users.roleEligibility.remove_not_allowed':
+    'Вы не можете удалить эту роль',
+  'pages.users.roleEligibility.protected_role':
+    'Защищённые роли может назначать или удалять только суперадминистратор',
+  'pages.users.roleEligibility.protected_target': 'Целевой аккаунт защищён',
+  'pages.users.roleEligibility.self_target': 'Нельзя изменять собственные роли',
+  'pages.users.roleEligibility.missing_caller_scope':
+    'Недостаточный охват разрешений',
+  'pages.users.roleEligibility.scope_exceeds_caller':
+    'Охват роли превышает ваши разрешения',
+  'pages.users.roleEligibility.missing_permission':
+    'У вас нет разрешения, необходимого для этой роли',
+  'pages.users.roleEligibility.role_grants_roles_assign':
+    'Роли, предоставляющие назначение ролей, может изменять только суперадминистратор',
   'pages.users.effectiveScope': 'Фактическая область действия',
   'pages.users.strategy': 'Стратегия',
   'pages.users.invite': 'Пригласить пользователя',

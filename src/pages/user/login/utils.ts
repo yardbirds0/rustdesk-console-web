@@ -10,6 +10,7 @@ const DEFAULT_DESTINATIONS: Array<
   ['/dashboard', (access) => access.isSuperAdmin],
   ['/devices', (access) => access.canDevicesView],
   ['/users', (access) => access.canUsersView],
+  ['/roles', (access) => access.canRolesView],
   ['/groups/user', (access) => access.canUserGroupsView],
   ['/strategy', (access) => access.canStrategiesAccess],
   ['/audits/conn', (access) => access.canAuditConnectionAccess],
@@ -35,26 +36,45 @@ function internalRedirectPath(redirect?: string | null): string | undefined {
 }
 
 function canAccessPath(pathname: string, access: AccessCapabilities): boolean {
+  const isOneSegmentDetail = (prefix: string) =>
+    new RegExp(`^${prefix}/[^/]+$`).test(pathname);
   if (
     pathname === '/user/center' ||
     pathname === '/address-book' ||
-    pathname.startsWith('/address-book/')
+    pathname === '/address-book/personal'
+  ) {
+    return true;
+  }
+  if (
+    pathname === '/address-book/shared' ||
+    isOneSegmentDetail('/address-book/shared')
   ) {
     return true;
   }
   if (pathname === '/dashboard') return access.isSuperAdmin;
   if (pathname === '/devices') return access.canDevicesView;
   if (pathname === '/users') return access.canUsersView;
-  if (pathname === '/groups/user') return access.canUserGroupsView;
+  if (pathname === '/groups') return access.canGroups;
+  if (pathname === '/groups/user' || isOneSegmentDetail('/groups/user')) {
+    return access.canUserGroupsView;
+  }
   if (
     pathname === '/groups/device' ||
-    pathname.startsWith('/groups/device/') ||
-    pathname === '/roles' ||
+    isOneSegmentDetail('/groups/device') ||
     pathname === '/custom-client' ||
     pathname === '/settings' ||
-    pathname.startsWith('/settings/')
+    [
+      '/settings/general',
+      '/settings/smtp',
+      '/settings/oidc-providers',
+      '/settings/ldap',
+    ].includes(pathname)
   ) {
     return access.isSuperAdmin;
+  }
+  if (pathname === '/roles') return access.canRolesView;
+  if (pathname === '/audits') {
+    return access.canAuditConnectionAccess || access.canAuditView;
   }
   if (pathname === '/audits/conn') return access.canAuditConnectionAccess;
   if (['/audits/file', '/audits/alarm', '/audits/console'].includes(pathname)) {

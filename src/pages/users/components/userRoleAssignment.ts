@@ -1,10 +1,18 @@
 export type AssignmentScopeType = 'global' | 'device_group';
 
+export function isCurrentUserTarget(
+  currentUserGuid: string | undefined,
+  targetUserGuid: string,
+): boolean {
+  return Boolean(currentUserGuid && currentUserGuid === targetUserGuid);
+}
+
 export type RoleAssignmentDraft = {
   key: string;
   role_guid: string;
   scope_type: AssignmentScopeType;
   device_group_guids: string[];
+  locked?: boolean;
 };
 
 export type AssignmentValidationError =
@@ -13,15 +21,47 @@ export type AssignmentValidationError =
   | 'unsupported_device_group_scope'
   | 'missing_device_group';
 
+export function getRoleEligibility(
+  roleGuid: string,
+  eligibility: ReadonlyMap<string, API.UserRoleEligibility>,
+): API.UserRoleEligibility {
+  return (
+    eligibility.get(roleGuid) || {
+      guid: roleGuid,
+      name: '',
+      protected_account: false,
+      assigned: false,
+      can_assign: false,
+      can_remove: false,
+      allowed_scope_types: [],
+      assignable_device_groups: [],
+      reason_code: 'assign_not_allowed',
+    }
+  );
+}
+
+export function preserveLockedAssignments(
+  drafts: RoleAssignmentDraft[],
+  original: RoleAssignmentDraft[],
+): RoleAssignmentDraft[] {
+  const locked = original.filter((draft) => draft.locked);
+  const editable = drafts.filter((draft) => !draft.locked);
+  return [...editable, ...locked].map((draft) => ({
+    ...draft,
+    device_group_guids: [...draft.device_group_guids],
+  }));
+}
+
 export const formatUserRoleNames = (
   user: Pick<API.UserItem, 'is_admin' | 'role_names'>,
   superAdminLabel: string,
+  ordinaryUserLabel = '-',
 ): string =>
   user.is_admin
     ? superAdminLabel
     : user.role_names?.length
       ? user.role_names.join(', ')
-      : '-';
+      : ordinaryUserLabel;
 
 export function roleSupportsDeviceGroupScope(
   role: API.RoleItem | undefined,

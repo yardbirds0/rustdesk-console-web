@@ -13,6 +13,7 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import React, {
@@ -22,10 +23,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { getAllDeviceGroups } from '@/services/rustdesk-console/deviceGroup';
 import { getPermissionList } from '@/services/rustdesk-console/permission';
 import { getRoleList } from '@/services/rustdesk-console/role';
 import {
+  getUserRoleEligibility,
   getUserRoles,
   replaceUserRoles,
 } from '@/services/rustdesk-console/userRole';
@@ -35,9 +36,10 @@ import {
   type AssignmentValidationError,
   changeAssignmentScope,
   deriveEffectivePermissionScopes,
+  getRoleEligibility,
   groupEffectivePermissionScopes,
+  preserveLockedAssignments,
   type RoleAssignmentDraft,
-  roleSupportsDeviceGroupScope,
   toReplaceUserRolesParams,
   validateAssignments,
 } from './userRoleAssignment';
@@ -47,6 +49,8 @@ interface UserRolesModalProps {
   user: API.UserItem | null;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  readOnly?: boolean;
+  canManageTarget?: boolean;
 }
 
 const loadAllRoles = async () => {
@@ -68,25 +72,39 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
   user,
   onOpenChange,
   onSuccess,
+  readOnly = false,
+  canManageTarget = true,
 }) => {
   const intl = useIntl();
   const { message: msgApi } = App.useApp();
   const [roles, setRoles] = useState<API.RoleItem[]>([]);
-  const [groups, setGroups] = useState<API.DeviceGroupItem[]>([]);
   const [permissionCatalog, setPermissionCatalog] = useState<
     API.PermissionItem[]
   >([]);
   const [drafts, setDrafts] = useState<RoleAssignmentDraft[]>([]);
+  const [originalDrafts, setOriginalDrafts] = useState<RoleAssignmentDraft[]>(
+    [],
+  );
+  const [eligibility, setEligibility] = useState<API.UserRoleEligibility[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const loadRequestRef = useRef(0);
   const saveRequestRef = useRef(0);
   const userGuid = user?.guid;
+  const effectiveReadOnly = readOnly || user?.is_admin === true;
 
   const groupNameByGuid = useMemo(
-    () => new Map(groups.map((group) => [group.guid, group.name])),
-    [groups],
+    () =>
+      new Map(
+        eligibility.flatMap((item) =>
+          item.assignable_device_groups.map((group) => [
+            group.guid,
+            group.name,
+          ]),
+        ),
+      ),
+    [eligibility],
   );
 
   const loadData = useCallback(async () => {
@@ -96,35 +114,48 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
     setSaving(false);
     setLoadFailed(false);
     setRoles([]);
-    setGroups([]);
     setPermissionCatalog([]);
     setDrafts([]);
+    setOriginalDrafts([]);
+    setEligibility([]);
     try {
-      const [roleItems, groupItems, assignmentResponse, permissionResponse] =
-        await Promise.all([
-          loadAllRoles(),
-          getAllDeviceGroups(),
-          getUserRoles(userGuid),
-          getPermissionList(),
-        ]);
+      const [
+        roleItems,
+        assignmentResponse,
+        eligibilityResponse,
+        permissionResponse,
+      ] = await Promise.all([
+        loadAllRoles(),
+        getUserRoles(userGuid),
+        getUserRoleEligibility(userGuid),
+        getPermissionList(),
+      ]);
       if (requestId !== loadRequestRef.current) return;
       if (
-        !Array.isArray(groupItems) ||
-        !Array.isArray(assignmentResponse.data)
+        !Array.isArray(assignmentResponse.data) ||
+        !Array.isArray(eligibilityResponse.data)
       ) {
         throw new Error('Invalid user role response');
       }
       setRoles(roleItems);
-      setGroups(groupItems);
       setPermissionCatalog(permissionResponse.data);
-      setDrafts(
-        assignmentResponse.data.map((assignment) => ({
-          key: assignment.guid,
-          role_guid: assignment.role_guid,
-          scope_type: assignment.scope_type,
-          device_group_guids: assignment.device_group_guids,
-        })),
+      const eligibilityMap = new Map(
+        eligibilityResponse.data.map((item) => [item.guid, item]),
       );
+      const loadedDrafts = assignmentResponse.data.map((assignment) => ({
+        key: assignment.guid,
+        role_guid: assignment.role_guid,
+        scope_type: assignment.scope_type,
+        device_group_guids: assignment.device_group_guids,
+        locked: !eligibilityMap.get(assignment.role_guid)?.can_remove,
+      }));
+      // The system owner is a virtual identity, not an assignment of every
+      // persisted role. Its effective permissions are projected below from
+      // the catalog and must never enter a mutation payload.
+      const visibleDrafts = user?.is_admin ? [] : loadedDrafts;
+      setDrafts(visibleDrafts);
+      setOriginalDrafts(visibleDrafts);
+      setEligibility(eligibilityResponse.data);
     } catch (error) {
       if (requestId !== loadRequestRef.current) return;
       setLoadFailed(true);
@@ -155,10 +186,18 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
     [roles],
   );
 
-  const effectiveScope = useMemo(
-    () => deriveEffectivePermissionScopes(drafts, roleByGuid),
-    [drafts, roleByGuid],
-  );
+  const effectiveScope = useMemo(() => {
+    const scopes = deriveEffectivePermissionScopes(drafts, roleByGuid);
+    if (user?.is_admin) {
+      for (const permission of permissionCatalog) {
+        scopes[permission.code] = {
+          scope_type: 'global',
+          device_group_guids: [],
+        };
+      }
+    }
+    return scopes;
+  }, [drafts, permissionCatalog, roleByGuid, user?.is_admin]);
 
   const effectiveScopeGroups = useMemo(
     () => groupEffectivePermissionScopes(effectiveScope),
@@ -171,6 +210,10 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
         permissionCatalog.map(({ code, scope }) => [code, scope] as const),
       ),
     [permissionCatalog],
+  );
+  const eligibilityByRole = useMemo(
+    () => new Map(eligibility.map((item) => [item.guid, item])),
+    [eligibility],
   );
 
   const displayedEffectiveScopeGroups = useMemo(() => {
@@ -203,10 +246,21 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
       }),
     });
 
+  const getEligibilityReason = (
+    reason?: API.UserRoleEligibility['reason_code'],
+  ) =>
+    reason
+      ? intl.formatMessage({
+          id: `pages.users.roleEligibility.${reason}`,
+          defaultMessage: 'This role assignment is unavailable',
+        })
+      : '';
+
   const canUseDeviceGroupScope = (roleGuid: string) => {
-    return roleSupportsDeviceGroupScope(
-      roleByGuid.get(roleGuid),
-      permissionScopeByCode,
+    return (
+      eligibilityByRole
+        .get(roleGuid)
+        ?.allowed_scope_types.includes('device_group') ?? false
     );
   };
 
@@ -258,11 +312,12 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
   };
 
   const handleSave = async () => {
-    if (!userGuid || loading || loadFailed) return;
+    if (!userGuid || loading || loadFailed || effectiveReadOnly) return;
     const viewRequestId = loadRequestRef.current;
     const saveRequestId = ++saveRequestRef.current;
+    const saveDrafts = preserveLockedAssignments(drafts, originalDrafts);
     const validationError = validateAssignments(
-      drafts,
+      saveDrafts,
       roleByGuid,
       permissionScopeByCode,
     );
@@ -293,7 +348,7 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
 
     setSaving(true);
     try {
-      await replaceUserRoles(userGuid, toReplaceUserRolesParams(drafts));
+      await replaceUserRoles(userGuid, toReplaceUserRolesParams(saveDrafts));
       if (
         viewRequestId !== loadRequestRef.current ||
         saveRequestId !== saveRequestRef.current
@@ -342,7 +397,17 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
     );
     return roles
       .filter((role) => !selected.has(role.guid))
-      .map((role) => ({ label: role.name, value: role.guid }));
+      .map((role) => {
+        const item = getRoleEligibility(role.guid, eligibilityByRole);
+        return {
+          label: role.name,
+          value: role.guid,
+          disabled: !item.can_assign,
+          title: item.reason_code
+            ? getEligibilityReason(item.reason_code)
+            : undefined,
+        };
+      });
   };
 
   return (
@@ -354,11 +419,14 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
           values={{ name: user?.display_name || user?.name || '' }}
         />
       }
-      open={open}
+      open={open && canManageTarget}
       onCancel={() => onOpenChange(false)}
       onOk={() => void handleSave()}
+      footer={effectiveReadOnly ? null : undefined}
       confirmLoading={saving}
-      okButtonProps={{ disabled: loading || loadFailed }}
+      okButtonProps={{
+        disabled: effectiveReadOnly || loading || loadFailed,
+      }}
       okText={intl.formatMessage({
         id: 'pages.common.save',
         defaultMessage: 'Save',
@@ -395,7 +463,29 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
 
             {drafts.map((draft, index) => {
               const role = roleByGuid.get(draft.role_guid);
+              const roleEligibility = getRoleEligibility(
+                draft.role_guid,
+                eligibilityByRole,
+              );
               const scopedAllowed = canUseDeviceGroupScope(draft.role_guid);
+              const groupOptions = [
+                ...roleEligibility.assignable_device_groups.map((group) => ({
+                  label: group.name,
+                  value: group.guid,
+                })),
+                ...draft.device_group_guids
+                  .filter(
+                    (guid) =>
+                      !roleEligibility.assignable_device_groups.some(
+                        (group) => group.guid === guid,
+                      ),
+                  )
+                  .map((guid) => ({
+                    label: groupNameByGuid.get(guid) || guid,
+                    value: guid,
+                    disabled: true,
+                  })),
+              ];
               return (
                 <Card
                   key={draft.key}
@@ -409,20 +499,32 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
                     />
                   }
                   extra={
-                    <Button
-                      danger
-                      type="text"
-                      icon={<DeleteOutlined />}
-                      aria-label={intl.formatMessage({
-                        id: 'pages.users.removeRole',
-                        defaultMessage: 'Remove role',
-                      })}
-                      onClick={() => {
-                        setDrafts((current) =>
-                          current.filter((item) => item.key !== draft.key),
-                        );
-                      }}
-                    />
+                    <Tooltip
+                      title={
+                        draft.locked
+                          ? getEligibilityReason(roleEligibility.reason_code)
+                          : undefined
+                      }
+                    >
+                      <span>
+                        <Button
+                          danger
+                          type="text"
+                          icon={<DeleteOutlined />}
+                          aria-label={intl.formatMessage({
+                            id: 'pages.users.removeRole',
+                            defaultMessage: 'Remove role',
+                          })}
+                          disabled={draft.locked || effectiveReadOnly}
+                          onClick={() => {
+                            if (draft.locked || effectiveReadOnly) return;
+                            setDrafts((current) =>
+                              current.filter((item) => item.key !== draft.key),
+                            );
+                          }}
+                        />
+                      </span>
+                    </Tooltip>
                   }
                 >
                   <Space
@@ -430,89 +532,117 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
                     size="middle"
                     style={{ width: '100%' }}
                   >
-                    <Select
-                      showSearch
-                      optionFilterProp="label"
-                      value={draft.role_guid || undefined}
-                      options={availableRoleOptions(draft.role_guid)}
-                      onChange={(value) => handleRoleChange(draft.key, value)}
-                      style={{ width: '100%' }}
-                      aria-label={intl.formatMessage({
-                        id: 'pages.users.selectRole',
-                        defaultMessage: 'Select role',
-                      })}
-                      placeholder={intl.formatMessage({
-                        id: 'pages.users.selectRole',
-                        defaultMessage: 'Select role',
-                      })}
-                    />
-                    <Flex
-                      wrap
-                      gap="small"
-                      align="flex-start"
-                      style={{ width: '100%' }}
+                    <Tooltip
+                      title={
+                        draft.locked || !roleEligibility.can_assign
+                          ? getEligibilityReason(roleEligibility.reason_code)
+                          : undefined
+                      }
                     >
-                      <Segmented
-                        value={draft.scope_type}
-                        aria-label={intl.formatMessage({
-                          id: 'pages.users.scopeMode',
-                          defaultMessage: 'Role scope mode',
-                        })}
-                        options={[
-                          {
-                            label: intl.formatMessage({
-                              id: 'pages.users.globalScope',
-                              defaultMessage: 'Global',
-                            }),
-                            value: 'global',
-                          },
-                          {
-                            label: intl.formatMessage({
-                              id: 'pages.users.deviceGroupScope',
-                              defaultMessage: 'Selected device groups',
-                            }),
-                            value: 'device_group',
-                            disabled: !scopedAllowed,
-                          },
-                        ]}
-                        onChange={(value) =>
-                          handleScopeChange(
-                            draft.key,
-                            value as AssignmentScopeType,
-                          )
-                        }
-                      />
-                      {draft.scope_type === 'device_group' && (
+                      <span>
                         <Select
-                          mode="multiple"
                           showSearch
                           optionFilterProp="label"
-                          maxTagCount={2}
-                          value={draft.device_group_guids}
-                          options={groups.map((group) => ({
-                            label: group.name,
-                            value: group.guid,
-                          }))}
-                          onChange={(values) =>
-                            updateDraft(draft.key, {
-                              device_group_guids: values,
-                            })
+                          value={draft.role_guid || undefined}
+                          options={availableRoleOptions(draft.role_guid)}
+                          onChange={(value) =>
+                            handleRoleChange(draft.key, value)
                           }
+                          disabled={draft.locked || effectiveReadOnly}
+                          style={{ width: '100%' }}
                           aria-label={intl.formatMessage({
-                            id: 'pages.users.selectDeviceGroups',
-                            defaultMessage: 'Select one or more device groups',
+                            id: 'pages.users.selectRole',
+                            defaultMessage: 'Select role',
                           })}
                           placeholder={intl.formatMessage({
-                            id: 'pages.users.selectDeviceGroups',
-                            defaultMessage: 'Select one or more device groups',
+                            id: 'pages.users.selectRole',
+                            defaultMessage: 'Select role',
                           })}
-                          style={{ flex: '1 1 280px', minWidth: 220 }}
-                          status={
-                            draft.device_group_guids.length === 0 ? 'error' : ''
-                          }
                         />
-                      )}
-                    </Flex>
+                      </span>
+                    </Tooltip>
+                    <Tooltip
+                      title={
+                        draft.locked
+                          ? getEligibilityReason(roleEligibility.reason_code)
+                          : undefined
+                      }
+                    >
+                      <Flex
+                        wrap
+                        gap="small"
+                        align="flex-start"
+                        style={{ width: '100%' }}
+                      >
+                        <Segmented
+                          value={draft.scope_type}
+                          aria-label={intl.formatMessage({
+                            id: 'pages.users.scopeMode',
+                            defaultMessage: 'Role scope mode',
+                          })}
+                          options={[
+                            {
+                              label: intl.formatMessage({
+                                id: 'pages.users.globalScope',
+                                defaultMessage: 'Global',
+                              }),
+                              value: 'global',
+                              disabled:
+                                !roleEligibility.allowed_scope_types.includes(
+                                  'global',
+                                ),
+                            },
+                            {
+                              label: intl.formatMessage({
+                                id: 'pages.users.deviceGroupScope',
+                                defaultMessage: 'Selected device groups',
+                              }),
+                              value: 'device_group',
+                              disabled: !scopedAllowed,
+                            },
+                          ]}
+                          onChange={(value) =>
+                            handleScopeChange(
+                              draft.key,
+                              value as AssignmentScopeType,
+                            )
+                          }
+                          disabled={draft.locked || effectiveReadOnly}
+                        />
+                        {draft.scope_type === 'device_group' && (
+                          <Select
+                            mode="multiple"
+                            showSearch
+                            optionFilterProp="label"
+                            maxTagCount={2}
+                            value={draft.device_group_guids}
+                            options={groupOptions}
+                            onChange={(values) =>
+                              updateDraft(draft.key, {
+                                device_group_guids: values,
+                              })
+                            }
+                            disabled={draft.locked || effectiveReadOnly}
+                            aria-label={intl.formatMessage({
+                              id: 'pages.users.selectDeviceGroups',
+                              defaultMessage:
+                                'Select one or more device groups',
+                            })}
+                            placeholder={intl.formatMessage({
+                              id: 'pages.users.selectDeviceGroups',
+                              defaultMessage:
+                                'Select one or more device groups',
+                            })}
+                            style={{ flex: '1 1 280px', minWidth: 220 }}
+                            status={
+                              draft.device_group_guids.length === 0
+                                ? 'error'
+                                : ''
+                            }
+                          />
+                        )}
+                      </Flex>
+                    </Tooltip>
                     <Space wrap size={[4, 4]}>
                       {(role?.permissions || []).map((permission) => (
                         <Tag key={permission}>
@@ -525,21 +655,23 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
               );
             })}
 
-            <Button
-              block
-              type="dashed"
-              icon={<PlusOutlined />}
-              disabled={
-                drafts.length >= roles.length ||
-                drafts.some((draft) => !draft.role_guid)
-              }
-              onClick={addDraft}
-            >
-              <FormattedMessage
-                id="pages.users.addRole"
-                defaultMessage="Add role"
-              />
-            </Button>
+            {!effectiveReadOnly && (
+              <Button
+                block
+                type="dashed"
+                icon={<PlusOutlined />}
+                disabled={
+                  drafts.length >= roles.length ||
+                  drafts.some((draft) => !draft.role_guid)
+                }
+                onClick={addDraft}
+              >
+                <FormattedMessage
+                  id="pages.users.addRole"
+                  defaultMessage="Add role"
+                />
+              </Button>
+            )}
           </Flex>
 
           <Divider style={{ margin: 0 }} />
@@ -628,6 +760,33 @@ const UserRolesModal: React.FC<UserRolesModalProps> = ({
                   </Flex>
                 </Card>
               ))}
+              {user?.is_admin && (
+                <Card
+                  size="small"
+                  title={intl.formatMessage({
+                    id: 'pages.users.systemCapabilities',
+                    defaultMessage: 'System capabilities',
+                  })}
+                >
+                  <Flex vertical gap="small">
+                    {[
+                      'roles.create',
+                      'roles.edit',
+                      'roles.delete',
+                      'settings.manage',
+                      'device_groups.manage',
+                      'identity_sources.manage',
+                    ].map((capability) => (
+                      <Typography.Text key={capability}>
+                        {intl.formatMessage({
+                          id: `pages.users.systemCapability.${capability}`,
+                          defaultMessage: capability,
+                        })}
+                      </Typography.Text>
+                    ))}
+                  </Flex>
+                </Card>
+              )}
             </Flex>
           </div>
         </Space>
