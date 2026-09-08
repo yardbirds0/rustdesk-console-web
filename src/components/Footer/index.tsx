@@ -1,13 +1,13 @@
 import { GithubOutlined } from '@ant-design/icons';
 import { DefaultFooter } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
+import { useAccess } from '@umijs/max';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { checkUpdate } from '@/services/rustdesk-console/system';
 import { getToken } from '@/utils/auth';
 import UpdateCheckModal from '@/components/UpdateCheckModal';
 
 const Footer: React.FC = () => {
-  const { initialState } = useModel('@@initialState');
+  const access = useAccess();
   const [modalOpen, setModalOpen] = useState(false);
   const [cachedResult, setCachedResult] =
     useState<API.UpdateCheckResult | null>(null);
@@ -26,16 +26,11 @@ const Footer: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Only auto-check when user is logged in as admin
-    if (
-      !autoChecked.current &&
-      initialState?.currentUser?.is_admin &&
-      getToken()
-    ) {
+    if (!autoChecked.current && access.isSuperAdmin && getToken()) {
       autoChecked.current = true;
       doAutoCheck();
     }
-  }, [doAutoCheck, initialState?.currentUser?.is_admin]);
+  }, [access.isSuperAdmin, doAutoCheck]);
 
   return (
     <>

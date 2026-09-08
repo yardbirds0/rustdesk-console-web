@@ -1,17 +1,36 @@
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { FormattedMessage } from '@umijs/max';
+import { FormattedMessage, useIntl } from '@umijs/max';
 import React, { useRef } from 'react';
 import { getConsoleAudits } from '@/services/rustdesk-console/audit';
 
 const ConsoleAudit: React.FC = () => {
+  const intl = useIntl();
   const actionRef = useRef<ActionType>(null);
 
   const columns: ProColumns<API.ConsoleAuditItem>[] = [
     {
+      title: (
+        <FormattedMessage
+          id="pages.audits.operator"
+          defaultMessage="Operator"
+        />
+      ),
+      dataIndex: 'operator',
+      hideInTable: true,
+    },
+    {
       title: <FormattedMessage id="pages.audits.user" defaultMessage="User" />,
-      dataIndex: 'user',
+      dataIndex: 'actor_user_name',
       width: 150,
+      search: false,
+      render: (_, record) =>
+        record.actor_user_name ||
+        record.actor_user_guid ||
+        intl.formatMessage({
+          id: 'pages.audits.unknownUser',
+          defaultMessage: 'Unknown user',
+        }),
     },
     {
       title: (
@@ -22,14 +41,42 @@ const ConsoleAudit: React.FC = () => {
     },
     {
       title: (
-        <FormattedMessage id="pages.audits.detail" defaultMessage="Detail" />
+        <FormattedMessage
+          id="pages.audits.targetType"
+          defaultMessage="Target type"
+        />
       ),
-      dataIndex: 'detail',
+      dataIndex: 'target_type',
+      width: 150,
+    },
+    {
+      title: (
+        <FormattedMessage
+          id="pages.audits.targetId"
+          defaultMessage="Target ID"
+        />
+      ),
+      dataIndex: 'target_guid',
+      width: 180,
+      ellipsis: true,
+    },
+    {
+      title: (
+        <FormattedMessage id="pages.audits.result" defaultMessage="Result" />
+      ),
+      dataIndex: 'result',
+      width: 120,
+    },
+    {
+      title: (
+        <FormattedMessage id="pages.audits.reason" defaultMessage="Reason" />
+      ),
+      dataIndex: 'reason',
       ellipsis: true,
     },
     {
       title: <FormattedMessage id="pages.audits.time" defaultMessage="Time" />,
-      dataIndex: 'time',
+      dataIndex: 'created_at',
       valueType: 'dateTime',
       width: 180,
     },
@@ -49,11 +96,12 @@ const ConsoleAudit: React.FC = () => {
           persistenceKey: 'console_audit_columns_state',
         }}
         actionRef={actionRef}
-        rowKey="id"
+        rowKey="guid"
         request={async (params) => {
           const result = await getConsoleAudits({
             current: params.current || 1,
             pageSize: params.pageSize || 20,
+            operator: params.operator,
           });
           return {
             data: result.data || [],
@@ -62,7 +110,10 @@ const ConsoleAudit: React.FC = () => {
           };
         }}
         columns={columns}
-        search={false}
+        search={{
+          defaultCollapsed: false,
+          labelWidth: 'auto',
+        }}
         pagination={{
           defaultPageSize: 20,
           showSizeChanger: true,
@@ -76,7 +127,7 @@ const ConsoleAudit: React.FC = () => {
           fullScreen: false,
           reload: true,
         }}
-        scroll={{ x: 800 }}
+        scroll={{ x: 1100 }}
       />
     </PageContainer>
   );

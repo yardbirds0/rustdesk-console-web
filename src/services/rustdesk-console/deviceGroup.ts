@@ -11,6 +11,20 @@ export async function getDeviceGroupList(
   });
 }
 
+export async function getStrategyTargetDeviceGroupList(
+  params: { current: number; pageSize: number; name?: string },
+  options?: { [key: string]: any },
+) {
+  return request<API.PaginatedResult<API.DeviceGroupItem>>(
+    '/api/device-groups/strategy-targets',
+    {
+      method: 'GET',
+      params,
+      ...(options || {}),
+    },
+  );
+}
+
 export async function createDeviceGroup(data: API.CreateDeviceGroupParams) {
   return request('/api/device-groups', { method: 'POST', data });
 }

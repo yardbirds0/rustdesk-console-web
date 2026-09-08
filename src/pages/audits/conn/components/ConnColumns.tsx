@@ -5,11 +5,13 @@ import { EditTwoTone } from '@ant-design/icons';
 import React, { Fragment } from 'react';
 import { formatDateTime, renderDuration, renderLocalField } from '../utils';
 import { getConnTypeMsgId, renderConnTypeIcon } from '../connType';
+import { canDisconnectAuditRecord } from '../connectionAccess';
 
 const { Text } = Typography;
 
 interface UseConnColumnsOptions {
   canEdit: boolean;
+  canDisconnect: boolean;
   onViewDetail: (record: API.ConnectionAuditItem) => void;
   onEditNote: (record: API.ConnectionAuditItem) => void;
   onDisconnect: (record: API.ConnectionAuditItem) => void;
@@ -19,7 +21,8 @@ export const useConnColumns = (
   options: UseConnColumnsOptions,
 ): ProColumns<API.ConnectionAuditItem>[] => {
   const intl = useIntl();
-  const { canEdit, onViewDetail, onEditNote, onDisconnect } = options;
+  const { canEdit, canDisconnect, onViewDetail, onEditNote, onDisconnect } =
+    options;
 
   const connTypeValueEnum: Record<number, { text: string }> = {
     [-1]: {
@@ -217,14 +220,13 @@ export const useConnColumns = (
         <FormattedMessage id="pages.common.action" defaultMessage="Action" />
       ),
       search: false,
-      hideInTable: !canEdit,
+      hideInTable: !canDisconnect,
       width: 100,
       render: (_, record) => {
-        if (!canEdit) {
+        if (!canDisconnect) {
           return <Text type="secondary">-</Text>;
         }
-        const isActive = record.action === 'established' && !record.closedAt;
-        if (!isActive) return '';
+        if (!canDisconnectAuditRecord(canDisconnect, record)) return '';
         return (
           <Button
             size="small"

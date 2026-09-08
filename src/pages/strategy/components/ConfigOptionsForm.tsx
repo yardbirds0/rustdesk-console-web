@@ -19,13 +19,15 @@ import {
 interface ConfigOptionsFormProps {
   value?: Record<string, string>;
   onChange?: (value: Record<string, string>) => void;
+  disabled?: boolean;
 }
 
 const ConfigOptionControl: React.FC<{
   option: ConfigOption;
   value?: string;
   onChange?: (value: string | undefined) => void;
-}> = ({ option, value, onChange }) => {
+  disabled?: boolean;
+}> = ({ option, value, onChange, disabled }) => {
   const intl = useIntl();
 
   const isDefault = value === undefined || value === option.defaultValue;
@@ -64,6 +66,7 @@ const ConfigOptionControl: React.FC<{
       control = (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Switch
+            disabled={disabled}
             checked={displayValue === 'Y'}
             onChange={(checked) => onChange?.(checked ? 'Y' : 'N')}
             checkedChildren="Y"
@@ -91,6 +94,7 @@ const ConfigOptionControl: React.FC<{
       const selectValue = value ?? option.defaultValue;
       control = (
         <Select
+          disabled={disabled}
           value={selectValue}
           onChange={(v) =>
             onChange?.(v === option.defaultValue ? undefined : v)
@@ -119,6 +123,7 @@ const ConfigOptionControl: React.FC<{
         value !== undefined ? Number(value) : Number(option.defaultValue);
       control = (
         <InputNumber
+          disabled={disabled}
           value={numValue}
           onChange={(v) =>
             onChange?.(
@@ -141,10 +146,10 @@ const ConfigOptionControl: React.FC<{
       );
       break;
     }
-    case 'text':
     default:
       control = (
         <Input
+          disabled={disabled}
           value={value || ''}
           onChange={(e) => onChange?.(e.target.value || undefined)}
           placeholder={intl.formatMessage(
@@ -174,7 +179,7 @@ const ConfigOptionControl: React.FC<{
       </div>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ flex: 1 }}>{control}</div>
-        {!isDefault && (
+        {!disabled && !isDefault && (
           <Tooltip
             title={intl.formatMessage({
               id: 'pages.strategies.resetToDefault',
@@ -194,6 +199,7 @@ const ConfigOptionControl: React.FC<{
 const ConfigOptionsForm: React.FC<ConfigOptionsFormProps> = ({
   value = {},
   onChange,
+  disabled = false,
 }) => {
   const intl = useIntl();
   const [localValue, setLocalValue] = useState<Record<string, string>>({
@@ -251,6 +257,7 @@ const ConfigOptionsForm: React.FC<ConfigOptionsFormProps> = ({
               key={opt.key}
               option={opt}
               value={localValue[opt.key]}
+              disabled={disabled}
               onChange={(val) => handleChange(opt.key, val)}
             />
           ))}
@@ -276,7 +283,7 @@ const ConfigOptionsForm: React.FC<ConfigOptionsFormProps> = ({
             values={{ count: modifiedCount }}
           />
         </span>
-        {modifiedCount > 0 && (
+        {!disabled && modifiedCount > 0 && (
           <Button size="small" onClick={handleResetAll}>
             <FormattedMessage
               id="pages.strategies.resetAll"

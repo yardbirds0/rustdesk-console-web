@@ -5,6 +5,7 @@ import React from 'react';
 
 interface CreateUserModalProps {
   visible: boolean;
+  canEditGroup: boolean;
   userGroups: API.UserGroupItem[];
   userGroupsLoading: boolean;
   form: FormInstance<API.CreateUserParams>;
@@ -14,6 +15,7 @@ interface CreateUserModalProps {
 
 const CreateUserModal: React.FC<CreateUserModalProps> = ({
   visible,
+  canEditGroup,
   userGroups,
   userGroupsLoading,
   form,
@@ -108,30 +110,32 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
         >
           <Input.TextArea />
         </Form.Item>
-        <Form.Item
-          name="user_group_guid"
-          label={
-            <FormattedMessage
-              id="pages.users.userGroup"
-              defaultMessage="User Group"
+        {canEditGroup && (
+          <Form.Item
+            name="user_group_guid"
+            label={
+              <FormattedMessage
+                id="pages.users.userGroup"
+                defaultMessage="User Group"
+              />
+            }
+          >
+            <Select
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              loading={userGroupsLoading}
+              placeholder={intl.formatMessage({
+                id: 'pages.users.selectUserGroup',
+                defaultMessage: 'Select user group',
+              })}
+              options={userGroups.map((group) => ({
+                label: group.name,
+                value: group.guid,
+              }))}
             />
-          }
-        >
-          <Select
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            loading={userGroupsLoading}
-            placeholder={intl.formatMessage({
-              id: 'pages.users.selectUserGroup',
-              defaultMessage: 'Select user group',
-            })}
-            options={userGroups.map((group) => ({
-              label: group.name,
-              value: group.guid,
-            }))}
-          />
-        </Form.Item>
+          </Form.Item>
+        )}
       </Form>
     </Modal>
   );

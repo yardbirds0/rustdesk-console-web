@@ -1,12 +1,12 @@
-import type { ProColumns } from '@ant-design/pro-components';
-import { FormattedMessage, useIntl, useModel } from '@umijs/max';
-import { Space, Tag, Tooltip } from 'antd';
 import {
   CrownOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
+import type { ProColumns } from '@ant-design/pro-components';
+import { FormattedMessage, useIntl, useModel } from '@umijs/max';
+import { Space, Tag, Tooltip } from 'antd';
 import React from 'react';
 
 const renderStatusTag = (status: number): React.ReactNode => {
@@ -66,7 +66,7 @@ export const getUserColumns = (): ProColumns<API.UserItem>[] => {
                 <CrownOutlined style={{ color: '#faad14' }} />
               </Tooltip>
             )}
-            {record.name === currentUser?.name && (
+            {record.guid === currentUser?.guid && (
               <Tag color="blue">
                 <FormattedMessage id="pages.users.me" defaultMessage="Me" />
               </Tag>

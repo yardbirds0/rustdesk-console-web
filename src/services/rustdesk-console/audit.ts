@@ -18,6 +18,24 @@ export async function getConnectionAudits(
   });
 }
 
+export async function getActiveConnections(
+  params: {
+    current?: number;
+    pageSize?: number;
+    deviceId?: string;
+  },
+  options?: { [key: string]: any },
+) {
+  return request<API.PaginatedResult<API.ActiveConnectionItem>>(
+    '/api/audits/conn/active',
+    {
+      method: 'GET',
+      params,
+      ...(options || {}),
+    },
+  );
+}
+
 export async function getFileAudits(
   params: {
     current?: number;
@@ -58,6 +76,7 @@ export async function getConsoleAudits(
   params: {
     current?: number;
     pageSize?: number;
+    operator?: string;
     created_at?: string;
   },
   options?: { [key: string]: any },

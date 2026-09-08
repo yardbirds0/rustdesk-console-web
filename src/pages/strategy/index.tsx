@@ -1,27 +1,31 @@
 import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { FormattedMessage, useIntl } from '@umijs/max';
+import { FormattedMessage, useAccess, useIntl, useModel } from '@umijs/max';
 import { App, Button } from 'antd';
 import React, { useRef, useState } from 'react';
 import {
   createStrategy,
   deleteStrategy,
   getStrategy,
+  getStrategyCandidates,
   getStrategyList,
   updateStrategy,
 } from '@/services/rustdesk-console';
 import StrategyColumns from './columns';
 import AssignModal from './components/AssignModal';
 import StrategyForm from './components/StrategyForm';
+import { getStrategyListMode } from './strategyAccess';
 
 const StrategyList: React.FC = () => {
   const intl = useIntl();
+  const access = useAccess();
+  const { initialState } = useModel('@@initialState');
   const { message: msgApi } = App.useApp();
   const actionRef = useRef<ActionType>(null);
 
   const [createModalVisible, setCreateModalVisible] = useState(false);
-  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [detailMode, setDetailMode] = useState<'view' | 'edit' | null>(null);
   const [currentRecord, setCurrentRecord] = useState<API.StrategyItem | null>(
     null,
   );
@@ -55,11 +59,14 @@ const StrategyList: React.FC = () => {
     }
   };
 
-  const handleEdit = async (record: API.StrategyItem) => {
+  const openStrategy = async (
+    record: API.StrategyItem,
+    mode: 'view' | 'edit',
+  ) => {
     try {
       const detail = await getStrategy(record.guid);
       setCurrentRecord(detail);
-      setEditModalVisible(true);
+      setDetailMode(mode);
     } catch {
       msgApi.error(
         intl.formatMessage({
@@ -80,7 +87,7 @@ const StrategyList: React.FC = () => {
           defaultMessage: 'Strategy updated',
         }),
       );
-      setEditModalVisible(false);
+      setDetailMode(null);
       setCurrentRecord(null);
       actionRef.current?.reload();
       return true;
@@ -121,9 +128,14 @@ const StrategyList: React.FC = () => {
   };
 
   const columns = StrategyColumns({
-    onEdit: handleEdit,
+    onView: (record) => void openStrategy(record, 'view'),
+    onEdit: (record) => void openStrategy(record, 'edit'),
     onDelete: handleDelete,
     onAssign: handleAssign,
+    canView: access.canStrategiesView,
+    canEdit: access.canStrategiesEdit,
+    canDelete: access.canStrategiesDelete,
+    canAssign: access.canStrategiesAssign,
   });
 
   return (
@@ -142,14 +154,18 @@ const StrategyList: React.FC = () => {
         actionRef={actionRef}
         rowKey="guid"
         request={async (params) => {
-          const result = await getStrategyList({
+          const loadStrategies =
+            getStrategyListMode(access.canStrategiesView) === 'full'
+              ? getStrategyList
+              : getStrategyCandidates;
+          const result = await loadStrategies({
             current: params.current,
             pageSize: params.pageSize,
             name: params.name,
           });
           return {
-            data: result.data || [],
-            total: result.total || 0,
+            data: result.data,
+            total: result.total,
             success: true,
           };
         }}
@@ -160,19 +176,23 @@ const StrategyList: React.FC = () => {
           showQuickJumper: true,
         }}
         scroll={{ x: 1000 }}
-        toolBarRender={() => [
-          <Button
-            key="create"
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setCreateModalVisible(true)}
-          >
-            <FormattedMessage
-              id="pages.strategies.create"
-              defaultMessage="Create Strategy"
-            />
-          </Button>,
-        ]}
+        toolBarRender={() =>
+          access.canStrategiesCreate
+            ? [
+                <Button
+                  key="create"
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setCreateModalVisible(true)}
+                >
+                  <FormattedMessage
+                    id="pages.strategies.create"
+                    defaultMessage="Create Strategy"
+                  />
+                </Button>,
+              ]
+            : []
+        }
         options={{
           density: true,
           setting: { listsHeight: 400 },
@@ -189,19 +209,32 @@ const StrategyList: React.FC = () => {
       />
 
       <StrategyForm
-        mode="edit"
-        open={editModalVisible}
-        onOpenChange={setEditModalVisible}
-        onFinish={handleUpdate}
+        mode={detailMode || 'view'}
+        open={detailMode !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailMode(null);
+            setCurrentRecord(null);
+          }
+        }}
+        onFinish={detailMode === 'edit' ? handleUpdate : undefined}
         currentRecord={currentRecord}
       />
 
-      <AssignModal
-        open={assignModalVisible}
-        onOpenChange={setAssignModalVisible}
-        record={assignRecord}
-        onSuccess={() => actionRef.current?.reload()}
-      />
+      {access.canStrategiesAssign && (
+        <AssignModal
+          open={assignModalVisible}
+          onOpenChange={setAssignModalVisible}
+          record={assignRecord}
+          canAssignUsers={
+            access.isSuperAdmin ||
+            initialState?.permissions?.scopes['strategies.assign']
+              ?.scope_type === 'global'
+          }
+          isSuperAdmin={access.isSuperAdmin}
+          onSuccess={() => actionRef.current?.reload()}
+        />
+      )}
     </PageContainer>
   );
 };
