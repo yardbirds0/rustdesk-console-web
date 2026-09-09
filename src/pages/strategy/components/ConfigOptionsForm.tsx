@@ -10,6 +10,12 @@ import {
 } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  getConfigOptionDescriptionMessageId,
+  getConfigOptionLabelMessageId,
+  getConfigOptionValueMessageId,
+  humanizeConfigOptionKey,
+} from '../config/i18n';
+import {
   type ConfigOption,
   configCategories,
   configOptionsMap,
@@ -32,15 +38,42 @@ const ConfigOptionControl: React.FC<{
 
   const isDefault = value === undefined || value === option.defaultValue;
 
+  const formatValue = (rawValue: string) => {
+    const messageId = getConfigOptionValueMessageId(option.key, rawValue);
+    return messageId
+      ? intl.formatMessage({
+          id: messageId,
+          defaultMessage: rawValue,
+        })
+      : rawValue;
+  };
+
+  const defaultValueLabel = formatValue(option.defaultValue);
+  const description = option.description
+    ? intl.formatMessage({
+        id: getConfigOptionDescriptionMessageId(option.key),
+        defaultMessage: option.description,
+      })
+    : intl.formatMessage(
+        {
+          id: 'pages.strategies.defaultValue',
+          defaultMessage: 'Default: {value}',
+        },
+        { value: defaultValueLabel },
+      );
+
   const handleReset = () => {
     onChange?.(undefined);
   };
 
   const labelNode = (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-      <Tooltip title={option.description || `${option.defaultValue}`}>
+      <Tooltip title={description}>
         <span style={{ fontFamily: 'monospace', fontSize: 13 }}>
-          {option.label}
+          {intl.formatMessage({
+            id: getConfigOptionLabelMessageId(option.key),
+            defaultMessage: humanizeConfigOptionKey(option.key),
+          })}
         </span>
       </Tooltip>
       {!isDefault && (
@@ -69,8 +102,8 @@ const ConfigOptionControl: React.FC<{
             disabled={disabled}
             checked={displayValue === 'Y'}
             onChange={(checked) => onChange?.(checked ? 'Y' : 'N')}
-            checkedChildren="Y"
-            unCheckedChildren="N"
+            checkedChildren={formatValue('Y')}
+            unCheckedChildren={formatValue('N')}
           />
           <span style={{ color: '#999', fontSize: 12 }}>
             {isDefault
@@ -83,7 +116,7 @@ const ConfigOptionControl: React.FC<{
                     id: 'pages.strategies.defaultValue',
                     defaultMessage: 'Default: {value}',
                   },
-                  { value: option.defaultValue },
+                  { value: defaultValueLabel },
                 )}
           </span>
         </div>
@@ -105,13 +138,13 @@ const ConfigOptionControl: React.FC<{
               id: 'pages.strategies.defaultValue',
               defaultMessage: 'Default: {value}',
             },
-            { value: option.defaultValue },
+            { value: defaultValueLabel },
           )}
           style={{ width: '100%' }}
         >
           {option.options?.map((opt) => (
             <Select.Option key={opt} value={opt}>
-              {opt}
+              {formatValue(opt)}
             </Select.Option>
           ))}
         </Select>
@@ -140,7 +173,7 @@ const ConfigOptionControl: React.FC<{
               id: 'pages.strategies.defaultValue',
               defaultMessage: 'Default: {value}',
             },
-            { value: option.defaultValue },
+            { value: defaultValueLabel },
           )}
         />
       );
@@ -157,7 +190,7 @@ const ConfigOptionControl: React.FC<{
               id: 'pages.strategies.defaultValue',
               defaultMessage: 'Default: {value}',
             },
-            { value: option.defaultValue || '-' },
+            { value: defaultValueLabel || '-' },
           )}
         />
       );

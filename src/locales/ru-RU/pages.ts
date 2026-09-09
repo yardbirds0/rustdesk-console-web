@@ -507,6 +507,243 @@ export default {
   'pages.strategies.category.floating': 'Плавающее окно',
   'pages.strategies.category.privacy': 'Конфиденциальность и запись',
   'pages.strategies.category.hide': 'Скрытие интерфейса',
+  'pages.strategies.values.yes': 'Да',
+  'pages.strategies.values.no': 'Нет',
+  'pages.strategies.option.access-mode.label': 'Режим доступа',
+  'pages.strategies.option.enable-keyboard.label': 'Включить клавиатуру и мышь',
+  'pages.strategies.option.enable-clipboard.label': 'Включить буфер обмена',
+  'pages.strategies.option.enable-file-transfer.label':
+    'Включить передачу файлов',
+  'pages.strategies.option.enable-camera.label': 'Включить камеру',
+  'pages.strategies.option.enable-terminal.label': 'Включить терминал',
+  'pages.strategies.option.enable-remote-printer.label':
+    'Включить удалённый принтер',
+  'pages.strategies.option.enable-tunnel.label': 'Включить туннель',
+  'pages.strategies.option.enable-remote-restart.label':
+    'Включить удалённый перезапуск',
+  'pages.strategies.option.enable-block-input.label': 'Блокировать ввод',
+  'pages.strategies.option.allow-auto-disconnect.label':
+    'Разрешить автоматическое отключение',
+  'pages.strategies.option.auto-disconnect-timeout.label':
+    'Тайм-аут автоматического отключения',
+  'pages.strategies.option.allow-only-conn-window-open.label':
+    'Разрешать только открытое окно подключения',
+  'pages.strategies.option.view-only.label': 'Только просмотр',
+  'pages.strategies.option.terminal-persistent.label': 'Постоянный терминал',
+  'pages.strategies.option.allow-ask-for-note.label':
+    'Запрашивать примечание к подключению',
+  'pages.strategies.option.allow-remote-config-modification.label':
+    'Разрешить удалённое изменение конфигурации',
+  'pages.strategies.option.whitelist.label': 'Список разрешённых IP',
+  'pages.strategies.option.approve-mode.label': 'Режим подтверждения',
+  'pages.strategies.option.verification-method.label': 'Способ проверки',
+  'pages.strategies.option.temporary-password-length.label':
+    'Длина временного пароля',
+  'pages.strategies.option.lock-after-session-end.label':
+    'Блокировать после завершения сеанса',
+  'pages.strategies.option.allow-remote-cm-modification.label':
+    'Разрешить удалённое изменение клиента',
+  'pages.strategies.option.remove-preset-password-warning.label':
+    'Убрать предупреждение о заданном пароле',
+  'pages.strategies.option.enable-trusted-devices.label':
+    'Включить доверенные устройства',
+  'pages.strategies.option.allow-logon-screen-password.label':
+    'Разрешить пароль на экране входа',
+  'pages.strategies.option.allow-numeric-one-time-password.label':
+    'Разрешить числовой одноразовый пароль',
+  'pages.strategies.option.allow-insecure-tls-fallback.label':
+    'Разрешить небезопасный откат TLS',
+  'pages.strategies.option.disable-change-permanent-password.label':
+    'Запретить изменение постоянного пароля',
+  'pages.strategies.option.disable-change-id.label': 'Запретить изменение ID',
+  'pages.strategies.option.disable-unlock-pin.label':
+    'Запретить PIN разблокировки',
+  'pages.strategies.option.theme.label': 'Тема',
+  'pages.strategies.option.lang.label': 'Язык',
+  'pages.strategies.option.enable-confirm-closing-tabs.label':
+    'Подтверждать закрытие вкладок',
+  'pages.strategies.option.allow-remove-wallpaper.label':
+    'Разрешить удаление обоев',
+  'pages.strategies.option.enable-open-new-connections-in-tabs.label':
+    'Открывать новые подключения во вкладках',
+  'pages.strategies.option.peer-card-ui-type.label': 'Тип карточки устройства',
+  'pages.strategies.option.peer-sorting.label': 'Сортировка устройств',
+  'pages.strategies.option.show-monitors-toolbar.label':
+    'Показывать панель мониторов',
+  'pages.strategies.option.collapse-toolbar.label':
+    'Сворачивать панель инструментов',
+  'pages.strategies.option.show-remote-cursor.label':
+    'Показывать удалённый курсор',
+  'pages.strategies.option.follow-remote-cursor.label':
+    'Следовать за удалённым курсором',
+  'pages.strategies.option.follow-remote-window.label':
+    'Следовать за удалённым окном',
+  'pages.strategies.option.zoom-cursor.label': 'Увеличивать курсор',
+  'pages.strategies.option.show-quality-monitor.label':
+    'Показывать монитор качества',
+  'pages.strategies.option.reverse-mouse-wheel.label':
+    'Инвертировать колесо мыши',
+  'pages.strategies.option.swap-left-right-mouse.label':
+    'Поменять левую и правую кнопки мыши',
+  'pages.strategies.option.displays-as-individual-windows.label':
+    'Показывать мониторы отдельными окнами',
+  'pages.strategies.option.use-all-my-displays-for-the-remote-session.label':
+    'Использовать все мониторы в удалённом сеансе',
+  'pages.strategies.option.view-style.label': 'Стиль просмотра',
+  'pages.strategies.option.scroll-style.label': 'Стиль прокрутки',
+  'pages.strategies.option.edge-scroll-edge-thickness.label':
+    'Толщина прокрутки у края',
+  'pages.strategies.option.trackpad-speed.label': 'Скорость трекпада',
+  'pages.strategies.option.disable-group-panel.label': 'Отключить панель групп',
+  'pages.strategies.option.keep-screen-on.label': 'Не выключать экран',
+  'pages.strategies.option.main-window-always-on-top.label':
+    'Главное окно поверх остальных',
+  'pages.strategies.option.disable-discovery-panel.label':
+    'Отключить панель обнаружения',
+  'pages.strategies.option.touch-mode.label': 'Сенсорный режим',
+  'pages.strategies.option.show-virtual-mouse.label':
+    'Показывать виртуальную мышь',
+  'pages.strategies.option.show-virtual-joystick.label':
+    'Показывать виртуальный джойстик',
+  'pages.strategies.option.enable-audio.label': 'Включить звук',
+  'pages.strategies.option.allow-always-software-render.label':
+    'Всегда использовать программный рендеринг',
+  'pages.strategies.option.enable-hwcodec.label': 'Включить аппаратный кодек',
+  'pages.strategies.option.use-texture-render.label':
+    'Использовать текстурный рендеринг',
+  'pages.strategies.option.disable-audio.label': 'Отключить звук',
+  'pages.strategies.option.i444.label': 'Цветовой формат I444',
+  'pages.strategies.option.image-quality.label': 'Качество изображения',
+  'pages.strategies.option.custom-image-quality.label':
+    'Пользовательское качество изображения',
+  'pages.strategies.option.custom-fps.label': 'Пользовательская частота кадров',
+  'pages.strategies.option.enable-directx-capture.label':
+    'Включить захват DirectX',
+  'pages.strategies.option.enable-android-software-encoding-half-scale.label':
+    'Включить программное кодирование Android в половинном масштабе',
+  'pages.strategies.option.allow-d3d-render.label': 'Разрешить рендеринг D3D',
+  'pages.strategies.option.enable-file-copy-paste.label':
+    'Включить копирование и вставку файлов',
+  'pages.strategies.option.disable-clipboard.label': 'Отключить буфер обмена',
+  'pages.strategies.option.one-way-clipboard-redirection.label':
+    'Односторонняя переадресация буфера обмена',
+  'pages.strategies.option.one-way-file-transfer.label':
+    'Односторонняя передача файлов',
+  'pages.strategies.option.sync-init-clipboard.label':
+    'Синхронизировать исходный буфер обмена',
+  'pages.strategies.option.enable-lan-discovery.label':
+    'Включить обнаружение в LAN',
+  'pages.strategies.option.direct-server.label': 'Прямой сервер',
+  'pages.strategies.option.allow-auto-update.label':
+    'Разрешить автоматические обновления',
+  'pages.strategies.option.enable-abr.label': 'Включить адаптивный битрейт',
+  'pages.strategies.option.allow-linux-headless.label':
+    'Разрешить безголовый режим Linux',
+  'pages.strategies.option.sync-ab-with-recent-sessions.label':
+    'Синхронизировать адресную книгу с последними сеансами',
+  'pages.strategies.option.sync-ab-tags.label':
+    'Синхронизировать теги адресной книги',
+  'pages.strategies.option.filter-ab-by-intersection.label':
+    'Фильтровать адресную книгу по пересечению',
+  'pages.strategies.option.enable-udp-punch.label': 'Включить UDP-проброс',
+  'pages.strategies.option.enable-ipv6-punch.label': 'Включить IPv6-проброс',
+  'pages.strategies.option.pre-elevate-service.label':
+    'Предварительно повысить права службы',
+  'pages.strategies.option.keep-awake-during-incoming-sessions.label':
+    'Не отключать сон во время входящих сеансов',
+  'pages.strategies.option.keep-awake-during-outgoing-sessions.label':
+    'Не отключать сон во время исходящих сеансов',
+  'pages.strategies.option.disable-udp.label': 'Отключить UDP',
+  'pages.strategies.option.allow-https-21114.label':
+    'Разрешить HTTPS на порту 21114',
+  'pages.strategies.option.allow-hostname-as-id.label':
+    'Разрешить имя хоста как ID',
+  'pages.strategies.option.allow-websocket.label': 'Разрешить WebSocket',
+  'pages.strategies.option.register-device.label':
+    'Зарегистрировать устройство',
+  'pages.strategies.option.allow-command-line-settings-when-settings-disabled.label':
+    'Разрешить настройки командной строки при отключённых настройках',
+  'pages.strategies.option.disable-floating-window.label':
+    'Отключить плавающее окно',
+  'pages.strategies.option.floating-window-size.label':
+    'Размер плавающего окна',
+  'pages.strategies.option.floating-window-untouchable.label':
+    'Плавающее окно без касаний',
+  'pages.strategies.option.floating-window-transparency.label':
+    'Прозрачность плавающего окна',
+  'pages.strategies.option.enable-record-session.label':
+    'Включить запись сеансов',
+  'pages.strategies.option.allow-auto-record-incoming.label':
+    'Разрешить автоматическую запись входящих сеансов',
+  'pages.strategies.option.allow-auto-record-outgoing.label':
+    'Разрешить автоматическую запись исходящих сеансов',
+  'pages.strategies.option.privacy-mode.label': 'Режим конфиденциальности',
+  'pages.strategies.option.hide-security-settings.label':
+    'Скрывать настройки безопасности',
+  'pages.strategies.option.hide-network-settings.label':
+    'Скрывать сетевые настройки',
+  'pages.strategies.option.hide-server-settings.label':
+    'Скрывать настройки сервера',
+  'pages.strategies.option.hide-proxy-settings.label':
+    'Скрывать настройки прокси',
+  'pages.strategies.option.hide-websocket-settings.label':
+    'Скрывать настройки WebSocket',
+  'pages.strategies.option.hide-remote-printer-settings.label':
+    'Скрывать настройки удалённого принтера',
+  'pages.strategies.option.hide-username-on-card.label':
+    'Скрывать имя пользователя на карточке',
+  'pages.strategies.option.hide-help-cards.label':
+    'Скрывать справочные карточки',
+  'pages.strategies.option.hide-tray.label': 'Скрывать трей',
+  'pages.strategies.option.hide-stop-service.label':
+    'Скрывать остановку службы',
+  'pages.strategies.option.auto-disconnect-timeout.description':
+    'Тайм-аут в минутах',
+  'pages.strategies.option.lang.description': 'Код языка',
+  'pages.strategies.option.enable-ipv6-punch.description':
+    'Собственный сервер: Нет, остальные: Да',
+  'pages.strategies.option.use-texture-render.description':
+    'Зависит от платформы',
+  'pages.strategies.option.whitelist.description': 'Список IP через запятую',
+  'pages.strategies.option.image-quality.value.best': 'Лучшее',
+  'pages.strategies.option.image-quality.value.balanced': 'Сбалансированное',
+  'pages.strategies.option.image-quality.value.low': 'Низкое',
+  'pages.strategies.option.image-quality.value.custom': 'Пользовательское',
+  'pages.strategies.option.access-mode.value.custom': 'Пользовательский',
+  'pages.strategies.option.access-mode.value.full': 'Полный доступ',
+  'pages.strategies.option.access-mode.value.view': 'Только просмотр',
+  'pages.strategies.option.theme.value.dark': 'Тёмная',
+  'pages.strategies.option.theme.value.light': 'Светлая',
+  'pages.strategies.option.theme.value.system': 'Системная',
+  'pages.strategies.option.peer-card-ui-type.value.0': 'Стиль карточки 0',
+  'pages.strategies.option.peer-card-ui-type.value.1': 'Стиль карточки 1',
+  'pages.strategies.option.peer-card-ui-type.value.2': 'Стиль карточки 2',
+  'pages.strategies.option.peer-sorting.value.remote-id': 'Удалённый ID',
+  'pages.strategies.option.peer-sorting.value.remote-host': 'Удалённый хост',
+  'pages.strategies.option.peer-sorting.value.username': 'Имя пользователя',
+  'pages.strategies.option.view-style.value.original': 'Исходный',
+  'pages.strategies.option.view-style.value.adaptive': 'Адаптивный',
+  'pages.strategies.option.scroll-style.value.scrollauto': 'Автоматический',
+  'pages.strategies.option.scroll-style.value.scrollbar': 'Полоса прокрутки',
+  'pages.strategies.option.scroll-style.value.scrolledge': 'Прокрутка у края',
+  'pages.strategies.option.keep-screen-on.value.never': 'Никогда',
+  'pages.strategies.option.keep-screen-on.value.during-controlled':
+    'Во время управляемого сеанса',
+  'pages.strategies.option.keep-screen-on.value.service-on':
+    'При включённой службе',
+  'pages.strategies.option.approve-mode.value.password': 'Пароль',
+  'pages.strategies.option.approve-mode.value.click': 'Щелчок',
+  'pages.strategies.option.approve-mode.value.password-click':
+    'Пароль и щелчок',
+  'pages.strategies.option.verification-method.value.use-temporary-password':
+    'Временный пароль',
+  'pages.strategies.option.verification-method.value.use-permanent-password':
+    'Постоянный пароль',
+  'pages.strategies.option.verification-method.value.use-both-passwords':
+    'Оба пароля',
+  'pages.strategies.option.temporary-password-length.value.6': '6 цифр',
+  'pages.strategies.option.temporary-password-length.value.8': '8 цифр',
+  'pages.strategies.option.temporary-password-length.value.10': '10 цифр',
   'pages.users.inviteSuccess': 'Приглашение отправлено',
   'pages.users.inviteFailed': 'Не удалось отправить приглашение',
   'pages.users.active': 'Активен',

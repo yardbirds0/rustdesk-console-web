@@ -510,6 +510,240 @@ export default {
   'pages.strategies.category.floating': 'Janela Flutuante',
   'pages.strategies.category.privacy': 'Privacidade e Gravação',
   'pages.strategies.category.hide': 'Ocultação da Interface',
+  'pages.strategies.values.yes': 'Sim',
+  'pages.strategies.values.no': 'Não',
+  'pages.strategies.option.access-mode.label': 'Modo de Acesso',
+  'pages.strategies.option.enable-keyboard.label': 'Ativar Teclado e Mouse',
+  'pages.strategies.option.enable-clipboard.label':
+    'Ativar Área de Transferência',
+  'pages.strategies.option.enable-file-transfer.label':
+    'Ativar Transferência de Arquivos',
+  'pages.strategies.option.enable-camera.label': 'Ativar Câmera',
+  'pages.strategies.option.enable-terminal.label': 'Ativar Terminal',
+  'pages.strategies.option.enable-remote-printer.label':
+    'Ativar Impressora Remota',
+  'pages.strategies.option.enable-tunnel.label': 'Ativar Túnel',
+  'pages.strategies.option.enable-remote-restart.label':
+    'Ativar Reinicialização Remota',
+  'pages.strategies.option.enable-block-input.label': 'Bloquear Entrada',
+  'pages.strategies.option.allow-auto-disconnect.label':
+    'Permitir Desconexão Automática',
+  'pages.strategies.option.auto-disconnect-timeout.label':
+    'Tempo para Desconexão Automática',
+  'pages.strategies.option.allow-only-conn-window-open.label':
+    'Permitir Apenas a Janela de Conexão Aberta',
+  'pages.strategies.option.view-only.label': 'Somente Visualização',
+  'pages.strategies.option.terminal-persistent.label': 'Terminal Persistente',
+  'pages.strategies.option.allow-ask-for-note.label':
+    'Solicitar Observação da Conexão',
+  'pages.strategies.option.allow-remote-config-modification.label':
+    'Permitir Modificação Remota da Configuração',
+  'pages.strategies.option.whitelist.label': 'Lista de IPs Permitidos',
+  'pages.strategies.option.approve-mode.label': 'Modo de Aprovação',
+  'pages.strategies.option.verification-method.label': 'Método de Verificação',
+  'pages.strategies.option.temporary-password-length.label':
+    'Tamanho da Senha Temporária',
+  'pages.strategies.option.lock-after-session-end.label':
+    'Bloquear Após o Fim da Sessão',
+  'pages.strategies.option.allow-remote-cm-modification.label':
+    'Permitir Modificação Remota do Cliente',
+  'pages.strategies.option.remove-preset-password-warning.label':
+    'Remover Aviso de Senha Predefinida',
+  'pages.strategies.option.enable-trusted-devices.label':
+    'Ativar Dispositivos Confiáveis',
+  'pages.strategies.option.allow-logon-screen-password.label':
+    'Permitir Senha na Tela de Login',
+  'pages.strategies.option.allow-numeric-one-time-password.label':
+    'Permitir Senha Numérica de Uso Único',
+  'pages.strategies.option.allow-insecure-tls-fallback.label':
+    'Permitir Fallback TLS Inseguro',
+  'pages.strategies.option.disable-change-permanent-password.label':
+    'Desativar Alteração de Senha Permanente',
+  'pages.strategies.option.disable-change-id.label':
+    'Desativar Alteração do ID',
+  'pages.strategies.option.disable-unlock-pin.label':
+    'Desativar PIN de Desbloqueio',
+  'pages.strategies.option.theme.label': 'Tema',
+  'pages.strategies.option.lang.label': 'Idioma',
+  'pages.strategies.option.enable-confirm-closing-tabs.label':
+    'Confirmar Fechamento de Abas',
+  'pages.strategies.option.allow-remove-wallpaper.label':
+    'Permitir Remover Papel de Parede',
+  'pages.strategies.option.enable-open-new-connections-in-tabs.label':
+    'Abrir Novas Conexões em Abas',
+  'pages.strategies.option.peer-card-ui-type.label':
+    'Tipo de Cartão do Dispositivo',
+  'pages.strategies.option.peer-sorting.label': 'Ordenação de Dispositivos',
+  'pages.strategies.option.show-monitors-toolbar.label':
+    'Mostrar Barra de Monitores',
+  'pages.strategies.option.collapse-toolbar.label':
+    'Recolher Barra de Ferramentas',
+  'pages.strategies.option.show-remote-cursor.label': 'Mostrar Cursor Remoto',
+  'pages.strategies.option.follow-remote-cursor.label': 'Seguir Cursor Remoto',
+  'pages.strategies.option.follow-remote-window.label': 'Seguir Janela Remota',
+  'pages.strategies.option.zoom-cursor.label': 'Ampliar Cursor',
+  'pages.strategies.option.show-quality-monitor.label':
+    'Mostrar Monitor de Qualidade',
+  'pages.strategies.option.reverse-mouse-wheel.label': 'Inverter Roda do Mouse',
+  'pages.strategies.option.swap-left-right-mouse.label':
+    'Trocar Botões Esquerdo e Direito',
+  'pages.strategies.option.displays-as-individual-windows.label':
+    'Exibir Monitores como Janelas Individuais',
+  'pages.strategies.option.use-all-my-displays-for-the-remote-session.label':
+    'Usar Todos os Monitores na Sessão Remota',
+  'pages.strategies.option.view-style.label': 'Estilo de Visualização',
+  'pages.strategies.option.scroll-style.label': 'Estilo de Rolagem',
+  'pages.strategies.option.edge-scroll-edge-thickness.label':
+    'Espessura da Rolagem de Borda',
+  'pages.strategies.option.trackpad-speed.label': 'Velocidade do Trackpad',
+  'pages.strategies.option.disable-group-panel.label':
+    'Desativar Painel de Grupos',
+  'pages.strategies.option.keep-screen-on.label': 'Manter Tela Ligada',
+  'pages.strategies.option.main-window-always-on-top.label':
+    'Manter Janela Principal no Topo',
+  'pages.strategies.option.disable-discovery-panel.label':
+    'Desativar Painel de Descoberta',
+  'pages.strategies.option.touch-mode.label': 'Modo de Toque',
+  'pages.strategies.option.show-virtual-mouse.label': 'Mostrar Mouse Virtual',
+  'pages.strategies.option.show-virtual-joystick.label':
+    'Mostrar Joystick Virtual',
+  'pages.strategies.option.enable-audio.label': 'Ativar Áudio',
+  'pages.strategies.option.allow-always-software-render.label':
+    'Usar Sempre Renderização por Software',
+  'pages.strategies.option.enable-hwcodec.label': 'Ativar Codec de Hardware',
+  'pages.strategies.option.use-texture-render.label':
+    'Usar Renderização por Textura',
+  'pages.strategies.option.disable-audio.label': 'Desativar Áudio',
+  'pages.strategies.option.i444.label': 'Formato de Cor I444',
+  'pages.strategies.option.image-quality.label': 'Qualidade da Imagem',
+  'pages.strategies.option.custom-image-quality.label':
+    'Qualidade de Imagem Personalizada',
+  'pages.strategies.option.custom-fps.label': 'FPS Personalizado',
+  'pages.strategies.option.enable-directx-capture.label':
+    'Ativar Captura DirectX',
+  'pages.strategies.option.enable-android-software-encoding-half-scale.label':
+    'Ativar Codificação de Software Android em Meia Escala',
+  'pages.strategies.option.allow-d3d-render.label': 'Permitir Renderização D3D',
+  'pages.strategies.option.enable-file-copy-paste.label':
+    'Ativar Cópia e Colagem de Arquivos',
+  'pages.strategies.option.disable-clipboard.label':
+    'Desativar Área de Transferência',
+  'pages.strategies.option.one-way-clipboard-redirection.label':
+    'Redirecionamento Unidirecional da Área de Transferência',
+  'pages.strategies.option.one-way-file-transfer.label':
+    'Transferência Unidirecional de Arquivos',
+  'pages.strategies.option.sync-init-clipboard.label':
+    'Sincronizar Área de Transferência Inicial',
+  'pages.strategies.option.enable-lan-discovery.label':
+    'Ativar Descoberta na LAN',
+  'pages.strategies.option.direct-server.label': 'Servidor Direto',
+  'pages.strategies.option.allow-auto-update.label':
+    'Permitir Atualizações Automáticas',
+  'pages.strategies.option.enable-abr.label': 'Ativar Bitrate Adaptativo',
+  'pages.strategies.option.allow-linux-headless.label':
+    'Permitir Modo Headless no Linux',
+  'pages.strategies.option.sync-ab-with-recent-sessions.label':
+    'Sincronizar Catálogo de Endereços com Sessões Recentes',
+  'pages.strategies.option.sync-ab-tags.label':
+    'Sincronizar Tags do Catálogo de Endereços',
+  'pages.strategies.option.filter-ab-by-intersection.label':
+    'Filtrar Catálogo de Endereços por Interseção',
+  'pages.strategies.option.enable-udp-punch.label': 'Ativar UDP Hole Punching',
+  'pages.strategies.option.enable-ipv6-punch.label':
+    'Ativar IPv6 Hole Punching',
+  'pages.strategies.option.pre-elevate-service.label': 'Pré-Elevar Serviço',
+  'pages.strategies.option.keep-awake-during-incoming-sessions.label':
+    'Manter Ativo Durante Sessões de Entrada',
+  'pages.strategies.option.keep-awake-during-outgoing-sessions.label':
+    'Manter Ativo Durante Sessões de Saída',
+  'pages.strategies.option.disable-udp.label': 'Desativar UDP',
+  'pages.strategies.option.allow-https-21114.label':
+    'Permitir HTTPS na Porta 21114',
+  'pages.strategies.option.allow-hostname-as-id.label':
+    'Permitir Nome de Host como ID',
+  'pages.strategies.option.allow-websocket.label': 'Permitir WebSocket',
+  'pages.strategies.option.register-device.label': 'Registrar Dispositivo',
+  'pages.strategies.option.allow-command-line-settings-when-settings-disabled.label':
+    'Permitir Configurações por Linha de Comando Quando Desativadas',
+  'pages.strategies.option.disable-floating-window.label':
+    'Desativar Janela Flutuante',
+  'pages.strategies.option.floating-window-size.label':
+    'Tamanho da Janela Flutuante',
+  'pages.strategies.option.floating-window-untouchable.label':
+    'Janela Flutuante Intocável',
+  'pages.strategies.option.floating-window-transparency.label':
+    'Transparência da Janela Flutuante',
+  'pages.strategies.option.enable-record-session.label':
+    'Ativar Gravação de Sessão',
+  'pages.strategies.option.allow-auto-record-incoming.label':
+    'Permitir Gravação Automática de Sessões de Entrada',
+  'pages.strategies.option.allow-auto-record-outgoing.label':
+    'Permitir Gravação Automática de Sessões de Saída',
+  'pages.strategies.option.privacy-mode.label': 'Modo de Privacidade',
+  'pages.strategies.option.hide-security-settings.label':
+    'Ocultar Configurações de Segurança',
+  'pages.strategies.option.hide-network-settings.label':
+    'Ocultar Configurações de Rede',
+  'pages.strategies.option.hide-server-settings.label':
+    'Ocultar Configurações do Servidor',
+  'pages.strategies.option.hide-proxy-settings.label':
+    'Ocultar Configurações de Proxy',
+  'pages.strategies.option.hide-websocket-settings.label':
+    'Ocultar Configurações de WebSocket',
+  'pages.strategies.option.hide-remote-printer-settings.label':
+    'Ocultar Configurações da Impressora Remota',
+  'pages.strategies.option.hide-username-on-card.label':
+    'Ocultar Usuário no Cartão',
+  'pages.strategies.option.hide-help-cards.label': 'Ocultar Cartões de Ajuda',
+  'pages.strategies.option.hide-tray.label': 'Ocultar Bandeja',
+  'pages.strategies.option.hide-stop-service.label': 'Ocultar Parar Serviço',
+  'pages.strategies.option.auto-disconnect-timeout.description':
+    'Tempo limite em minutos',
+  'pages.strategies.option.lang.description': 'Código do idioma',
+  'pages.strategies.option.enable-ipv6-punch.description':
+    'Auto-hospedado: Não, outros: Sim',
+  'pages.strategies.option.use-texture-render.description':
+    'Depende da plataforma',
+  'pages.strategies.option.whitelist.description':
+    'Lista de IPs separada por vírgulas',
+  'pages.strategies.option.image-quality.value.best': 'Melhor',
+  'pages.strategies.option.image-quality.value.balanced': 'Balanceado',
+  'pages.strategies.option.image-quality.value.low': 'Baixa',
+  'pages.strategies.option.image-quality.value.custom': 'Personalizado',
+  'pages.strategies.option.access-mode.value.custom': 'Personalizado',
+  'pages.strategies.option.access-mode.value.full': 'Acesso Total',
+  'pages.strategies.option.access-mode.value.view': 'Somente Visualização',
+  'pages.strategies.option.theme.value.dark': 'Escuro',
+  'pages.strategies.option.theme.value.light': 'Claro',
+  'pages.strategies.option.theme.value.system': 'Sistema',
+  'pages.strategies.option.peer-card-ui-type.value.0': 'Estilo de Cartão 0',
+  'pages.strategies.option.peer-card-ui-type.value.1': 'Estilo de Cartão 1',
+  'pages.strategies.option.peer-card-ui-type.value.2': 'Estilo de Cartão 2',
+  'pages.strategies.option.peer-sorting.value.remote-id': 'ID Remoto',
+  'pages.strategies.option.peer-sorting.value.remote-host': 'Host Remoto',
+  'pages.strategies.option.peer-sorting.value.username': 'Nome de Usuário',
+  'pages.strategies.option.view-style.value.original': 'Original',
+  'pages.strategies.option.view-style.value.adaptive': 'Adaptável',
+  'pages.strategies.option.scroll-style.value.scrollauto': 'Automático',
+  'pages.strategies.option.scroll-style.value.scrollbar': 'Barra de Rolagem',
+  'pages.strategies.option.scroll-style.value.scrolledge':
+    'Rolagem pelas Bordas',
+  'pages.strategies.option.keep-screen-on.value.never': 'Nunca',
+  'pages.strategies.option.keep-screen-on.value.during-controlled':
+    'Durante a Sessão Controlada',
+  'pages.strategies.option.keep-screen-on.value.service-on': 'Serviço Ativo',
+  'pages.strategies.option.approve-mode.value.password': 'Senha',
+  'pages.strategies.option.approve-mode.value.click': 'Clique',
+  'pages.strategies.option.approve-mode.value.password-click': 'Senha e Clique',
+  'pages.strategies.option.verification-method.value.use-temporary-password':
+    'Senha Temporária',
+  'pages.strategies.option.verification-method.value.use-permanent-password':
+    'Senha Permanente',
+  'pages.strategies.option.verification-method.value.use-both-passwords':
+    'Ambas as Senhas',
+  'pages.strategies.option.temporary-password-length.value.6': '6 dígitos',
+  'pages.strategies.option.temporary-password-length.value.8': '8 dígitos',
+  'pages.strategies.option.temporary-password-length.value.10': '10 dígitos',
   'pages.users.inviteSuccess': 'Convite enviado',
   'pages.users.inviteFailed': 'Falha ao enviar convite',
   'pages.users.active': 'Ativo',
