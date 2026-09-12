@@ -4,10 +4,7 @@ export const addRequiredPermissions = (
 ) => {
   const selected = new Set(selectedCodes);
   const requirements = new Map(
-    catalog.map((permission) => [
-      permission.code,
-      permission.requires || [],
-    ]),
+    catalog.map((permission) => [permission.code, permission.requires || []]),
   );
   const pending = [...selected];
 
