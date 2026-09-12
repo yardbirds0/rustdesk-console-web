@@ -1,5 +1,16 @@
 export default {
+  'pages.request.loginExpired':
+    'A sessão expirou. Entre novamente para continuar',
+  'pages.request.accessDenied':
+    'Você não tem permissão para executar esta ação',
+  'pages.request.responseStatus': 'Falha na solicitação (HTTP {status})',
+  'pages.request.noResponse':
+    'O servidor não respondeu. Tente novamente mais tarde.',
+  'pages.request.error': 'Falha na solicitação. Tente novamente mais tarde.',
   'pages.login.success': 'Login realizado com sucesso!',
+  'pages.login.permissionsLoadFailed':
+    'Não foi possível carregar as permissões. O catálogo de endereços pessoal foi aberto; atualize a página para tentar novamente.',
+  'pages.login.permissionsRetry': 'Tentar novamente',
   'pages.login.failure': 'Falha no login, tente novamente!',
   'pages.login.username.placeholder': 'Nome de usuário',
   'pages.login.username.required': 'Por favor, informe seu nome de usuário!',
@@ -187,6 +198,12 @@ export default {
   'pages.audits.alarmType': 'Tipo de Alarme',
   'pages.audits.user': 'Usuário',
   'pages.audits.detail': 'Detalhes',
+  'pages.audits.operator': 'Operador',
+  'pages.audits.targetType': 'Tipo de destino',
+  'pages.audits.targetId': 'ID do destino',
+  'pages.audits.result': 'Resultado',
+  'pages.audits.reason': 'Motivo',
+  'pages.audits.unknownUser': 'Usuário desconhecido',
   'pages.audits.type': 'Tipo',
   'pages.audits.connType.remoteDesktop': 'Área de Trabalho Remota',
   'pages.audits.connType.fileTransfer': 'Transferência de Arquivos',
@@ -197,7 +214,9 @@ export default {
   'pages.audits.duration': 'Duração',
   'pages.audits.note': 'Observação',
   'pages.audits.disconnect': 'Desconectar',
-  'pages.audits.disconnectSuccess': 'Desconectado com sucesso!',
+  'pages.audits.connectionId': 'ID da conexão',
+  'pages.audits.currentConnections': 'Conexões atuais',
+  'pages.audits.disconnectSuccess': 'Solicitação de desconexão enviada',
   'pages.audits.disconnectFailed': 'Falha ao desconectar!',
   'pages.audits.disconnectConfirmTitle': 'Confirmar Operação',
   'pages.audits.disconnectConfirmTip':
@@ -270,6 +289,12 @@ export default {
   'pages.userGroups.importFailed': 'Falha ao importar usuários',
   'pages.userGroups.membersUpdated': '{count} usuário(s) atualizado(s)',
   'pages.userGroups.membersUpdateFailed': 'Falha ao atualizar membros do grupo',
+  'pages.userGroups.members': 'Membros',
+  'pages.userGroups.moveSelected': 'Mover selecionados',
+  'pages.userGroups.addSelected': 'Adicionar usuários selecionados',
+  'pages.userGroups.membersTitle': 'Membros de {name}',
+  'pages.userGroups.currentMembers': 'Membros atuais',
+  'pages.userGroups.addUsers': 'Adicionar usuários',
   'pages.users.userGroup': 'Grupo de Usuários',
   'pages.users.selectUserGroup': 'Selecione o grupo de usuários',
   'pages.addressBook.userGroup': 'Grupo de usuários',
@@ -279,6 +304,9 @@ export default {
   'pages.addressBook.permissionFull': 'Controle total',
   'pages.addressBook.shareAccess': 'Compartilhar',
   'pages.addressBook.accessTitle': '{name} - Gerenciamento de acesso',
+  'pages.addressBook.accessReadOnlyTitle':
+    'Configurações de compartilhamento de {name}',
+  'pages.addressBook.viewShareSettings': 'Configurações de compartilhamento',
   'pages.addressBook.shareType': 'Tipo de compartilhamento',
   'pages.addressBook.shareTarget': 'Destino',
   'pages.addressBook.shareTypeEveryone': 'Todos',
@@ -303,8 +331,91 @@ export default {
   'pages.roles.name': 'Nome da Função',
   'pages.roles.note': 'Observação',
   'pages.roles.permissions': 'Permissões',
-  'pages.roles.permissionsInfo': 'Número de permissões atribuídas',
+  'pages.roles.permissionsInfo': 'Número de permissões e recursos efetivos',
+  'pages.roles.superAdminInfo':
+    'O acesso de superadministrador é protegido separadamente e não pode ser concedido por uma função.',
+  'pages.roles.permissionsLoadFailed':
+    'Falha ao carregar o catálogo de permissões',
+  'pages.roles.detailLoadFailed': 'Falha ao carregar os detalhes da função',
+  'pages.roles.permissionScopeInfo':
+    'As ações de dispositivo podem ser atribuídas globalmente ou a grupos de dispositivos selecionados quando um usuário recebe esta função.',
+  'pages.roles.personalAddressBook': 'Catálogo de endereços pessoal',
+  'pages.roles.basicFunction': 'Funcionalidade básica',
+  'pages.roles.permissionPresets': 'Predefinições de permissões',
+  'pages.roles.preset.custom': 'Personalizado',
+  'pages.roles.preset.readOnly': 'Somente leitura global',
+  'pages.roles.preset.deviceOperator': 'Operador de dispositivos',
+  'pages.roles.preset.userAdministrator': 'Administrador de usuários',
+  'pages.roles.preset.sharedAddressBookAdministrator':
+    'Administrador de catálogos compartilhados',
+  'pages.roles.preset.strategyMaintainer': 'Responsável por estratégias',
+  'pages.roles.preset.deviceStrategyAssigner':
+    'Atribuidor de estratégias a dispositivos',
+  'pages.roles.preset.systemAdministrator': 'Administrador do sistema',
+  'pages.roles.protectedAccount': 'Contas protegidas',
+  'pages.roles.protectedAccountInfo':
+    'Somente o superadministrador pode gerenciar contas protegidas.',
+  'pages.roles.ownerOnly': 'Somente superadministrador',
+  'pages.roles.systemIdentity.ordinary': 'Usuário comum',
+  'pages.roles.systemIdentity.superAdmin': 'Superadministrador',
+  'pages.roles.systemIdentity.builtIn': 'Integrado ao sistema',
+  'pages.roles.systemIdentity.ordinarySummary':
+    'Somente a funcionalidade básica da agenda pessoal.',
+  'pages.roles.systemIdentity.superAdminSummary':
+    'Autoridade efetiva completa do único proprietário do sistema.',
+  'pages.roles.systemIdentity.systemCapabilities':
+    'Definição de funções, configurações do sistema, estrutura de grupos de dispositivos e administração de identidades',
+  'pages.roles.disableProtectionConfirm': 'Desativar a proteção desta função?',
+  'pages.roles.disableProtectionAffected':
+    '{count} membros poderão ser gerenciados por administradores delegados.',
+  'pages.roles.resource.users': 'Usuários',
+  'pages.roles.resource.user_groups': 'Grupos de usuários',
+  'pages.roles.resource.devices': 'Dispositivos',
+  'pages.roles.resource.address_books': 'Catálogos de endereços',
+  'pages.roles.resource.strategies': 'Estratégias',
+  'pages.roles.resource.audit': 'Auditoria',
+  'pages.roles.resource.roles': 'Funções',
+  'pages.roles.resource.system': 'Recursos do sistema',
+  'pages.roles.resource.other': 'Outros',
+  'pages.roles.unknownResource': 'Recurso desconhecido',
+  'pages.roles.unknownPermission': 'Permissão desconhecida',
+  'pages.roles.permission.users.view': 'Visualizar usuários',
+  'pages.roles.permission.users.create': 'Criar usuários',
+  'pages.roles.permission.users.edit': 'Editar usuários',
+  'pages.roles.permission.users.status': 'Alterar status do usuário',
+  'pages.roles.permission.users.delete': 'Excluir usuários',
+  'pages.roles.permission.users.security': 'Gerenciar segurança do usuário',
+  'pages.roles.permission.users.force_logout': 'Encerrar sessões de usuários',
+  'pages.roles.permission.user_groups.view': 'Visualizar grupos de usuários',
+  'pages.roles.permission.user_groups.create': 'Criar grupos de usuários',
+  'pages.roles.permission.user_groups.edit': 'Editar grupos de usuários',
+  'pages.roles.permission.user_groups.delete': 'Excluir grupos de usuários',
+  'pages.roles.permission.user_groups.membership':
+    'Gerenciar membros dos grupos de usuários',
+  'pages.roles.permission.devices.view': 'Visualizar dispositivos',
+  'pages.roles.permission.devices.edit': 'Editar detalhes dos dispositivos',
+  'pages.roles.permission.devices.status': 'Alterar status dos dispositivos',
+  'pages.roles.permission.devices.delete': 'Excluir dispositivos',
+  'pages.roles.permission.devices.disconnect': 'Desconectar dispositivos',
+  'pages.roles.permission.address_books.view':
+    'Visualizar configurações de catálogos de endereços compartilhados',
+  'pages.roles.permission.address_books.edit':
+    'Editar catálogos de endereços compartilhados',
+  'pages.roles.permission.address_books.share':
+    'Criar e gerenciar catálogos de endereços compartilhados',
+  'pages.roles.permission.strategies.view': 'Visualizar estratégias',
+  'pages.roles.permission.strategies.create': 'Criar estratégias',
+  'pages.roles.permission.strategies.edit': 'Editar estratégias',
+  'pages.roles.permission.strategies.delete': 'Excluir estratégias',
+  'pages.roles.permission.strategies.assign': 'Atribuir estratégias',
+  'pages.roles.permission.audit.view': 'Visualizar logs de auditoria',
+  'pages.roles.permission.roles.view': 'Visualizar funções',
+  'pages.roles.permission.roles.assign': 'Atribuir funções',
+  'pages.roles.permission.roles.create': 'Criar funções',
+  'pages.roles.permission.roles.edit': 'Editar funções',
+  'pages.roles.permission.roles.delete': 'Excluir funções',
   'pages.roles.create': 'Criar Função',
+  'pages.roles.view': 'Ver função',
   'pages.roles.edit': 'Editar Função',
   'pages.roles.deleteConfirm': 'Tem certeza de que deseja excluir esta função?',
   'pages.roles.selectPermissions': 'Selecionar Permissões',
@@ -352,6 +463,7 @@ export default {
   'pages.strategies.note': 'Observação',
   'pages.strategies.create': 'Criar Estratégia',
   'pages.strategies.edit': 'Editar Estratégia',
+  'pages.strategies.view': 'Visualizar Estratégia',
   'pages.strategies.deleteConfirm':
     'Tem certeza de que deseja excluir esta estratégia?',
   'pages.strategies.createSuccess': 'Estratégia criada',
@@ -369,6 +481,9 @@ export default {
   'pages.strategies.resetAll': 'Restaurar Tudo',
   'pages.strategies.assign': 'Atribuir',
   'pages.strategies.assignManagement': 'Gerenciamento de Atribuições',
+  'pages.strategies.loadAssignedFailed':
+    'Falha ao carregar os destinos atribuídos',
+  'pages.strategies.loadTargetsFailed': 'Falha ao carregar os destinos',
   'pages.strategies.assignDevice': 'Dispositivo',
   'pages.strategies.assignUser': 'Usuário',
   'pages.strategies.assignDeviceGroup': 'Grupo de Dispositivos',
@@ -400,6 +515,63 @@ export default {
   'pages.users.active': 'Ativo',
   'pages.users.disabled': 'Desativado',
   'pages.users.unverified': 'Não Verificado',
+  'pages.users.roles': 'Funções',
+  'pages.users.rolesTitle': 'Funções de {name}',
+  'pages.users.rolesLoadFailed': 'Falha ao carregar as funções do usuário',
+  'pages.users.rolesSaveFailed': 'Falha ao salvar as funções do usuário',
+  'pages.users.rolesSaved': 'Funções do usuário salvas',
+  'pages.users.addRole': 'Adicionar função',
+  'pages.users.superAdmin': 'Superadministrador',
+  'pages.users.roleAssignmentTitle': 'Função {number}',
+  'pages.users.selectRole': 'Selecionar função',
+  'pages.users.removeRole': 'Remover função',
+  'pages.users.roleRequired': 'Selecione uma função para cada atribuição',
+  'pages.users.duplicateRole': 'Cada função só pode ser atribuída uma vez',
+  'pages.users.scopeMode': 'Modo de escopo da função',
+  'pages.users.globalScope': 'Global',
+  'pages.users.deviceGroupScope': 'Grupos de dispositivos selecionados',
+  'pages.users.selectDeviceGroups':
+    'Selecione um ou mais grupos de dispositivos',
+  'pages.users.unsupportedDeviceGroupScope':
+    'O escopo por grupo de dispositivos está disponível apenas para funções com ações de dispositivo e atribuição de estratégia',
+  'pages.users.deviceGroupScopeRequired':
+    'Selecione pelo menos um grupo de dispositivos',
+  'pages.users.rolesScopeInfo':
+    'Concessões globais prevalecem sobre concessões mais restritas por grupo de dispositivos.',
+  'pages.users.protectedAccount': 'Conta protegida',
+  'pages.users.protectedAccountInfo':
+    'Contas protegidas só podem ser gerenciadas pelo superadministrador.',
+  'pages.users.systemCapabilities': 'Capacidades do sistema',
+  'pages.users.systemCapability.roles.create': 'Criar definições de função',
+  'pages.users.systemCapability.roles.edit': 'Editar definições de função',
+  'pages.users.systemCapability.roles.delete': 'Excluir definições de função',
+  'pages.users.systemCapability.settings.manage':
+    'Gerenciar configurações do sistema',
+  'pages.users.systemCapability.device_groups.manage':
+    'Gerenciar estrutura de grupos de dispositivos',
+  'pages.users.systemCapability.identity_sources.manage':
+    'Gerenciar fontes de identidade',
+  'pages.users.roleEligibility.assign_not_allowed':
+    'Você não pode atribuir esta função',
+  'pages.users.roleEligibility.remove_not_allowed':
+    'Você não pode remover esta função',
+  'pages.users.roleEligibility.protected_role':
+    'Funções protegidas só podem ser atribuídas ou removidas pelo superadministrador',
+  'pages.users.roleEligibility.protected_target':
+    'A conta de destino está protegida',
+  'pages.users.roleEligibility.super_admin_target':
+    'Funções comuns não podem ser atribuídas ao superadministrador',
+  'pages.users.roleEligibility.self_target':
+    'Você não pode alterar suas próprias funções',
+  'pages.users.roleEligibility.missing_caller_scope':
+    'O escopo de permissão é insuficiente',
+  'pages.users.roleEligibility.scope_exceeds_caller':
+    'O escopo da função excede suas permissões',
+  'pages.users.roleEligibility.missing_permission':
+    'Falta uma permissão exigida por esta função',
+  'pages.users.roleEligibility.role_grants_roles_assign':
+    'Funções que concedem atribuição de funções só podem ser gerenciadas pelo superadministrador',
+  'pages.users.effectiveScope': 'Escopo efetivo',
   'pages.users.strategy': 'Estratégia',
   'pages.users.invite': 'Convidar Usuário',
   'pages.users.password': 'Senha',
@@ -545,6 +717,8 @@ export default {
   'pages.common.enterDescription': 'Informe uma descrição',
   'pages.common.rename': 'Renomear',
   'pages.common.save': 'Salvar',
+  'pages.common.close': 'Fechar',
+  'pages.common.back': 'Voltar',
   'pages.userGroups.enterName': 'Informe o nome do grupo',
   'pages.users.admin': 'Administrador',
   'pages.users.me': 'Eu',

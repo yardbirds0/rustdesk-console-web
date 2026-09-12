@@ -40,7 +40,7 @@ const getOfflineDuration = (lastOnlineTime: string, intl: any): string => {
     } else {
       return '';
     }
-  } catch (error) {
+  } catch {
     return '';
   }
 };
@@ -263,6 +263,7 @@ export const getDeviceColumns = (options?: {
       search: false,
       sorter: true,
       render: (_: unknown, record: API.DeviceItem) => {
+        if (record.status === undefined) return '-';
         const isNormal = record.status === 1;
         return isNormal ? (
           <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 16 }} />

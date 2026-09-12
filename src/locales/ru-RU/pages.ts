@@ -1,5 +1,15 @@
 export default {
+  'pages.request.loginExpired': 'Срок действия сеанса истёк. Войдите снова.',
+  'pages.request.accessDenied':
+    'У вас нет разрешения на выполнение этого действия',
+  'pages.request.responseStatus': 'Ошибка запроса (HTTP {status})',
+  'pages.request.noResponse': 'Сервер не ответил. Повторите попытку позже.',
+  'pages.request.error':
+    'Не удалось выполнить запрос. Повторите попытку позже.',
   'pages.login.success': 'Вход выполнен успешно!',
+  'pages.login.permissionsLoadFailed':
+    'Не удалось загрузить права. Открыта личная адресная книга; обновите страницу, чтобы повторить попытку.',
+  'pages.login.permissionsRetry': 'Повторить',
   'pages.login.failure': 'Ошибка входа, попробуйте снова!',
   'pages.login.username.placeholder': 'Имя пользователя',
   'pages.login.username.required': 'Пожалуйста, введите имя пользователя!',
@@ -182,6 +192,12 @@ export default {
   'pages.audits.alarmType': 'Тип оповещения',
   'pages.audits.user': 'Пользователь',
   'pages.audits.detail': 'Детали',
+  'pages.audits.operator': 'Оператор',
+  'pages.audits.targetType': 'Тип цели',
+  'pages.audits.targetId': 'Идентификатор цели',
+  'pages.audits.result': 'Результат',
+  'pages.audits.reason': 'Причина',
+  'pages.audits.unknownUser': 'Неизвестный пользователь',
   'pages.audits.type': 'Тип',
   'pages.audits.connType.remoteDesktop': 'Удаленный рабочий стол',
   'pages.audits.connType.fileTransfer': 'Передача файлов',
@@ -192,7 +208,9 @@ export default {
   'pages.audits.duration': 'Длительность',
   'pages.audits.note': 'Примечание',
   'pages.audits.disconnect': 'Отключить',
-  'pages.audits.disconnectSuccess': 'Успешно отключено!',
+  'pages.audits.connectionId': 'Идентификатор подключения',
+  'pages.audits.currentConnections': 'Текущие подключения',
+  'pages.audits.disconnectSuccess': 'Запрос на отключение отправлен',
   'pages.audits.disconnectFailed': 'Не удалось отключить!',
   'pages.audits.disconnectConfirmTitle': 'Подтверждение операции',
   'pages.audits.disconnectConfirmTip':
@@ -266,6 +284,12 @@ export default {
   'pages.userGroups.membersUpdated': 'Обновлено {count} пользователь(ей)',
   'pages.userGroups.membersUpdateFailed':
     'Не удалось обновить участников группы',
+  'pages.userGroups.members': 'Участники',
+  'pages.userGroups.moveSelected': 'Переместить выбранных',
+  'pages.userGroups.addSelected': 'Добавить выбранных пользователей',
+  'pages.userGroups.membersTitle': 'Участники группы {name}',
+  'pages.userGroups.currentMembers': 'Текущие участники',
+  'pages.userGroups.addUsers': 'Добавить пользователей',
   'pages.users.userGroup': 'Группа пользователей',
   'pages.users.selectUserGroup': 'Выберите группу пользователей',
   'pages.addressBook.userGroup': 'Группа пользователей',
@@ -275,6 +299,8 @@ export default {
   'pages.addressBook.permissionFull': 'Полный доступ',
   'pages.addressBook.shareAccess': 'Общий доступ',
   'pages.addressBook.accessTitle': '{name} - Управление доступом',
+  'pages.addressBook.accessReadOnlyTitle': 'Настройки общего доступа: {name}',
+  'pages.addressBook.viewShareSettings': 'Настройки общего доступа',
   'pages.addressBook.shareType': 'Тип доступа',
   'pages.addressBook.shareTarget': 'Целевая аудитория',
   'pages.addressBook.shareTypeEveryone': 'Все пользователи',
@@ -299,8 +325,93 @@ export default {
   'pages.roles.name': 'Название роли',
   'pages.roles.note': 'Примечание',
   'pages.roles.permissions': 'Права',
-  'pages.roles.permissionsInfo': 'Количество назначенных прав',
+  'pages.roles.permissionsInfo': 'Количество действующих прав и возможностей',
+  'pages.roles.superAdminInfo':
+    'Доступ суперадминистратора защищён отдельно и не может быть предоставлен через роль.',
+  'pages.roles.permissionsLoadFailed': 'Не удалось загрузить каталог прав',
+  'pages.roles.detailLoadFailed': 'Не удалось загрузить сведения о роли',
+  'pages.roles.permissionScopeInfo':
+    'При назначении роли действия с устройствами можно разрешить глобально или только для выбранных групп устройств.',
+  'pages.roles.personalAddressBook': 'Личная адресная книга',
+  'pages.roles.basicFunction': 'Базовая функция',
+  'pages.roles.permissionPresets': 'Предустановки прав',
+  'pages.roles.preset.custom': 'Пользовательский',
+  'pages.roles.preset.readOnly': 'Глобальный просмотр',
+  'pages.roles.preset.deviceOperator': 'Оператор устройств',
+  'pages.roles.preset.userAdministrator': 'Администратор пользователей',
+  'pages.roles.preset.sharedAddressBookAdministrator':
+    'Администратор общих адресных книг',
+  'pages.roles.preset.strategyMaintainer': 'Редактор стратегий',
+  'pages.roles.preset.deviceStrategyAssigner':
+    'Назначение стратегий устройствам',
+  'pages.roles.preset.systemAdministrator': 'Системный администратор',
+  'pages.roles.protectedAccount': 'Защищённые аккаунты',
+  'pages.roles.protectedAccountInfo':
+    'Управлять защищёнными аккаунтами может только суперадминистратор.',
+  'pages.roles.ownerOnly': 'Только суперадминистратор',
+  'pages.roles.systemIdentity.ordinary': 'Обычный пользователь',
+  'pages.roles.systemIdentity.superAdmin': 'Суперадминистратор',
+  'pages.roles.systemIdentity.builtIn': 'Встроенная система',
+  'pages.roles.systemIdentity.ordinarySummary':
+    'Только базовые функции личной адресной книги.',
+  'pages.roles.systemIdentity.superAdminSummary':
+    'Полные эффективные полномочия единственного владельца системы.',
+  'pages.roles.systemIdentity.systemCapabilities':
+    'Определение ролей, системные настройки, структура групп устройств и управление идентификацией',
+  'pages.roles.disableProtectionConfirm': 'Отключить защиту этой роли?',
+  'pages.roles.disableProtectionAffected':
+    'Участники: {count}; ими смогут управлять делегированные администраторы.',
+  'pages.roles.resource.users': 'Пользователи',
+  'pages.roles.resource.user_groups': 'Группы пользователей',
+  'pages.roles.resource.devices': 'Устройства',
+  'pages.roles.resource.address_books': 'Адресные книги',
+  'pages.roles.resource.strategies': 'Стратегии',
+  'pages.roles.resource.audit': 'Аудит',
+  'pages.roles.resource.roles': 'Роли',
+  'pages.roles.resource.system': 'Системные возможности',
+  'pages.roles.resource.other': 'Другое',
+  'pages.roles.unknownResource': 'Неизвестный ресурс',
+  'pages.roles.unknownPermission': 'Неизвестное право',
+  'pages.roles.permission.users.view': 'Просмотр пользователей',
+  'pages.roles.permission.users.create': 'Создание пользователей',
+  'pages.roles.permission.users.edit': 'Редактирование пользователей',
+  'pages.roles.permission.users.status': 'Изменение статуса пользователей',
+  'pages.roles.permission.users.delete': 'Удаление пользователей',
+  'pages.roles.permission.users.security':
+    'Управление безопасностью пользователей',
+  'pages.roles.permission.users.force_logout':
+    'Принудительное завершение сеансов пользователей',
+  'pages.roles.permission.user_groups.view': 'Просмотр групп пользователей',
+  'pages.roles.permission.user_groups.create': 'Создание групп пользователей',
+  'pages.roles.permission.user_groups.edit':
+    'Редактирование групп пользователей',
+  'pages.roles.permission.user_groups.delete': 'Удаление групп пользователей',
+  'pages.roles.permission.user_groups.membership':
+    'Управление составом групп пользователей',
+  'pages.roles.permission.devices.view': 'Просмотр устройств',
+  'pages.roles.permission.devices.edit':
+    'Редактирование сведений об устройствах',
+  'pages.roles.permission.devices.status': 'Изменение статуса устройств',
+  'pages.roles.permission.devices.delete': 'Удаление устройств',
+  'pages.roles.permission.devices.disconnect': 'Отключение устройств',
+  'pages.roles.permission.address_books.view':
+    'Просмотр настроек общих адресных книг',
+  'pages.roles.permission.address_books.edit': 'Изменение общих адресных книг',
+  'pages.roles.permission.address_books.share':
+    'Создание и управление общими адресными книгами',
+  'pages.roles.permission.strategies.view': 'Просмотр стратегий',
+  'pages.roles.permission.strategies.create': 'Создание стратегий',
+  'pages.roles.permission.strategies.edit': 'Редактирование стратегий',
+  'pages.roles.permission.strategies.delete': 'Удаление стратегий',
+  'pages.roles.permission.strategies.assign': 'Назначение стратегий',
+  'pages.roles.permission.audit.view': 'Просмотр журналов аудита',
+  'pages.roles.permission.roles.view': 'Просмотр ролей',
+  'pages.roles.permission.roles.assign': 'Назначение ролей',
+  'pages.roles.permission.roles.create': 'Создание ролей',
+  'pages.roles.permission.roles.edit': 'Редактирование ролей',
+  'pages.roles.permission.roles.delete': 'Удаление ролей',
   'pages.roles.create': 'Создать роль',
+  'pages.roles.view': 'Просмотр роли',
   'pages.roles.edit': 'Редактировать роль',
   'pages.roles.deleteConfirm': 'Вы уверены, что хотите удалить эту роль?',
   'pages.roles.selectPermissions': 'Выберите права',
@@ -350,6 +461,7 @@ export default {
   'pages.strategies.note': 'Примечание',
   'pages.strategies.create': 'Создать стратегию',
   'pages.strategies.edit': 'Редактировать стратегию',
+  'pages.strategies.view': 'Просмотреть стратегию',
   'pages.strategies.deleteConfirm':
     'Вы уверены, что хотите удалить эту стратегию?',
   'pages.strategies.createSuccess': 'Стратегия создана',
@@ -367,6 +479,9 @@ export default {
   'pages.strategies.resetAll': 'Сбросить все',
   'pages.strategies.assign': 'Назначить',
   'pages.strategies.assignManagement': 'Управление назначениями',
+  'pages.strategies.loadAssignedFailed':
+    'Не удалось загрузить назначенные цели',
+  'pages.strategies.loadTargetsFailed': 'Не удалось загрузить цели',
   'pages.strategies.assignDevice': 'Устройство',
   'pages.strategies.assignUser': 'Пользователь',
   'pages.strategies.assignDeviceGroup': 'Группа устройств',
@@ -397,6 +512,61 @@ export default {
   'pages.users.active': 'Активен',
   'pages.users.disabled': 'Отключен',
   'pages.users.unverified': 'Не подтвержден',
+  'pages.users.roles': 'Роли',
+  'pages.users.rolesTitle': 'Роли пользователя {name}',
+  'pages.users.rolesLoadFailed': 'Не удалось загрузить роли пользователя',
+  'pages.users.rolesSaveFailed': 'Не удалось сохранить роли пользователя',
+  'pages.users.rolesSaved': 'Роли пользователя сохранены',
+  'pages.users.addRole': 'Добавить роль',
+  'pages.users.superAdmin': 'Суперадминистратор',
+  'pages.users.roleAssignmentTitle': 'Роль {number}',
+  'pages.users.selectRole': 'Выберите роль',
+  'pages.users.removeRole': 'Удалить роль',
+  'pages.users.roleRequired': 'Выберите роль для каждого назначения',
+  'pages.users.duplicateRole': 'Каждую роль можно назначить только один раз',
+  'pages.users.scopeMode': 'Область действия роли',
+  'pages.users.globalScope': 'Глобально',
+  'pages.users.deviceGroupScope': 'Выбранные группы устройств',
+  'pages.users.selectDeviceGroups':
+    'Выберите одну или несколько групп устройств',
+  'pages.users.unsupportedDeviceGroupScope':
+    'Область по группам устройств доступна только для ролей с действиями над устройствами или назначением стратегий',
+  'pages.users.deviceGroupScopeRequired':
+    'Выберите хотя бы одну группу устройств',
+  'pages.users.rolesScopeInfo':
+    'Глобальные права перекрывают права для отдельных групп устройств.',
+  'pages.users.protectedAccount': 'Защищённый аккаунт',
+  'pages.users.protectedAccountInfo':
+    'Управлять защищёнными аккаунтами может только суперадминистратор.',
+  'pages.users.systemCapabilities': 'Системные возможности',
+  'pages.users.systemCapability.roles.create': 'Создание определений ролей',
+  'pages.users.systemCapability.roles.edit': 'Изменение определений ролей',
+  'pages.users.systemCapability.roles.delete': 'Удаление определений ролей',
+  'pages.users.systemCapability.settings.manage':
+    'Управление системными настройками',
+  'pages.users.systemCapability.device_groups.manage':
+    'Управление структурой групп устройств',
+  'pages.users.systemCapability.identity_sources.manage':
+    'Управление источниками удостоверений',
+  'pages.users.roleEligibility.assign_not_allowed':
+    'Вы не можете назначить эту роль',
+  'pages.users.roleEligibility.remove_not_allowed':
+    'Вы не можете удалить эту роль',
+  'pages.users.roleEligibility.protected_role':
+    'Защищённые роли может назначать или удалять только суперадминистратор',
+  'pages.users.roleEligibility.protected_target': 'Целевой аккаунт защищён',
+  'pages.users.roleEligibility.super_admin_target':
+    'Обычные роли нельзя назначать суперадминистратору',
+  'pages.users.roleEligibility.self_target': 'Нельзя изменять собственные роли',
+  'pages.users.roleEligibility.missing_caller_scope':
+    'Недостаточный охват разрешений',
+  'pages.users.roleEligibility.scope_exceeds_caller':
+    'Охват роли превышает ваши разрешения',
+  'pages.users.roleEligibility.missing_permission':
+    'У вас нет разрешения, необходимого для этой роли',
+  'pages.users.roleEligibility.role_grants_roles_assign':
+    'Роли, предоставляющие назначение ролей, может изменять только суперадминистратор',
+  'pages.users.effectiveScope': 'Фактическая область действия',
   'pages.users.strategy': 'Стратегия',
   'pages.users.invite': 'Пригласить пользователя',
   'pages.users.password': 'Пароль',
@@ -543,6 +713,8 @@ export default {
   'pages.common.enterDescription': 'Введите описание',
   'pages.common.rename': 'Переименовать',
   'pages.common.save': 'Сохранить',
+  'pages.common.close': 'Закрыть',
+  'pages.common.back': 'Назад',
   'pages.userGroups.enterName': 'Введите название группы',
   'pages.users.admin': 'Администратор',
   'pages.users.me': 'Я',

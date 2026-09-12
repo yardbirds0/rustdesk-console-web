@@ -7,12 +7,12 @@ import {
 import {
   batchUpdateDeviceStatus,
   deleteDevice,
-  getDeviceList,
+  getAdminDeviceList,
 } from '@/services/rustdesk-console/device';
 import { removeDeviceFromGroup } from '@/services/rustdesk-console/deviceGroup';
 import type { ActionType } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { FormattedMessage, useIntl } from '@umijs/max';
+import { FormattedMessage, useAccess, useIntl } from '@umijs/max';
 import { App, Button, Popconfirm, Space } from 'antd';
 import React, { useRef, useState } from 'react';
 import { getDeviceColumns } from '@/components/DeviceSelectTable/columns';
@@ -33,6 +33,7 @@ const DeviceList: React.FC<DeviceListProps> = ({
 }) => {
   const intl = useIntl();
   const { message: msgApi } = App.useApp();
+  const access = useAccess();
   const actionRef = useRef<ActionType>(null);
 
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -299,6 +300,10 @@ const DeviceList: React.FC<DeviceListProps> = ({
       onDelete: handleDelete,
       onRemoveFromGroup: handleRemoveFromGroup,
       deviceGroupGuid,
+      canEdit: access.canDevicesEdit,
+      canStatus: access.canDevicesStatus,
+      canDelete: access.canDevicesDelete,
+      canManageGroup: access.isSuperAdmin,
     },
     actionWidth,
   );
@@ -330,13 +335,18 @@ const DeviceList: React.FC<DeviceListProps> = ({
         }}
         actionRef={actionRef}
         rowKey="guid"
-        rowSelection={{
-          selectedRowKeys,
-          onChange: (keys, rows) => {
-            setSelectedRowKeys(keys);
-            setSelectedRows(rows);
-          },
-        }}
+        rowSelection={
+          (deviceGroupGuid && access.isSuperAdmin) ||
+          (!deviceGroupGuid && access.canDevicesStatus)
+            ? {
+                selectedRowKeys,
+                onChange: (keys, rows) => {
+                  setSelectedRowKeys(keys);
+                  setSelectedRows(rows);
+                },
+              }
+            : undefined
+        }
         tableAlertOptionRender={() => (
           <Space size={16}>
             {deviceGroupGuid ? (
@@ -435,16 +445,16 @@ const DeviceList: React.FC<DeviceListProps> = ({
           </Space>
         )}
         request={async (params) => {
-          const result = await getDeviceList({
+          const result = await getAdminDeviceList({
             current: params.current || 1,
             pageSize: params.pageSize || 20,
             id: params.id,
             status: params.status,
             is_online: params.is_online,
             user_name: params.user_name,
+            os: params.os,
             device_group_name: params.device_group_name_search,
             device_group_guid: deviceGroupGuid,
-            os: params.os,
           });
           const data = result.data || [];
           setHasDisabledDevice(data.some((d) => d.status === 0));
@@ -467,7 +477,7 @@ const DeviceList: React.FC<DeviceListProps> = ({
         }}
         scroll={{ x: '100%' }}
         toolBarRender={() =>
-          deviceGroupGuid
+          deviceGroupGuid && access.isSuperAdmin
             ? [
                 <Button
                   key="import"
@@ -504,6 +514,7 @@ const DeviceList: React.FC<DeviceListProps> = ({
       <EditDeviceModal
         open={editModalVisible}
         record={editingRecord}
+        isSuperAdmin={access.isSuperAdmin}
         onCancel={() => {
           setEditModalVisible(false);
           setEditingRecord(null);

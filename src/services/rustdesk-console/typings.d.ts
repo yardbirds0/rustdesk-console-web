@@ -1,5 +1,6 @@
 declare namespace API {
   type CurrentUser = {
+    guid?: string;
     name?: string;
     display_name?: string;
     email?: string;
@@ -222,11 +223,13 @@ declare namespace API {
     note: string;
     status: number; // -1=未验证, 0=禁用, 1=正常
     is_admin: boolean;
+    is_protected?: boolean;
     third_auth_type?: string;
     strategy_guid?: string;
     strategy_name?: string;
     user_group_guid?: string;
     user_group_name?: string;
+    role_names?: string[];
     avatar?: string;
     created_at?: string;
     updated_at?: string;
@@ -444,6 +447,10 @@ declare namespace API {
     };
     user?: string;
     group?: string;
+    target?: {
+      name: string;
+      display_name?: string;
+    };
     rule: 1 | 2 | 3;
     ruleType: 'user' | 'group' | 'everyone';
     createdAt?: string;
@@ -462,11 +469,27 @@ declare namespace API {
     rule: 1 | 2 | 3;
   };
 
+  type AddressBookShareCandidateUser = {
+    guid: string;
+    name: string;
+    display_name?: string;
+  };
+
+  type AddressBookShareCandidateGroup = {
+    guid: string;
+    name: string;
+  };
+
+  type AddressBookShareCandidates = {
+    users: AddressBookShareCandidateUser[];
+    groups: AddressBookShareCandidateGroup[];
+  };
+
   type ConnectionAuditItem = {
     id?: number;
     deviceId?: string;
     deviceUuid?: string;
-    connId?: string;
+    connId?: string | number;
     ip?: string;
     action?: string;
     peerId?: string;
@@ -477,7 +500,15 @@ declare namespace API {
     requestedAt?: string;
     establishedAt?: string;
     closedAt?: string;
+    can_disconnect: boolean;
     [key: string]: any;
+  };
+
+  type ActiveConnectionItem = {
+    deviceId: string;
+    deviceUuid: string;
+    connId: number;
+    can_disconnect: true;
   };
 
   type FileAuditItem = {
@@ -509,12 +540,15 @@ declare namespace API {
   };
 
   type ConsoleAuditItem = {
-    id?: string;
-    user?: string;
+    guid: string;
+    actor_user_guid?: string | null;
+    actor_user_name?: string | null;
     action?: string;
-    detail?: string;
-    time?: string;
-    [key: string]: any;
+    target_type?: string | null;
+    target_guid?: string | null;
+    result?: string | number | boolean | null;
+    reason?: string | null;
+    created_at?: string | null;
   };
 
   type AddressBookSettings = {
@@ -555,31 +589,103 @@ declare namespace API {
   type RoleItem = {
     guid: string;
     name: string;
-    note?: string;
-    permission_count?: number;
-    created_at?: string;
-    updated_at?: string;
-    [key: string]: any;
+    note: string;
+    permissions: string[];
+    protected_account?: boolean;
+    member_count?: number;
+    created_at: string;
+    updated_at: string;
   };
 
   type CreateRoleParams = {
     name: string;
     note?: string;
-    permissions?: string[];
+    permissions: string[];
+    protected_account?: boolean;
+    confirm_protected_account_change?: boolean;
   };
 
   type UpdateRoleParams = {
     name?: string;
     note?: string;
     permissions?: string[];
+    protected_account?: boolean;
+    confirm_protected_account_change?: boolean;
   };
 
   type PermissionItem = {
-    id: string;
+    code: string;
+    resource: string;
+    action: string;
     name: string;
-    description?: string;
-    module?: string;
-    [key: string]: any;
+    description: string;
+    assignable: boolean;
+    system_only: boolean;
+    scope: 'global' | 'device_group';
+    requires?: string[];
+  };
+
+  type PermissionScopeType = 'global' | 'device_group';
+
+  type EffectivePermissionScope = {
+    scope_type: PermissionScopeType;
+    device_group_guids: string[];
+  };
+
+  type EffectivePermissions = {
+    permissions: string[];
+    scopes: Record<string, EffectivePermissionScope>;
+  };
+
+  type UserRoleAssignment = {
+    guid: string;
+    role_guid: string;
+    role_name: string;
+    scope_type: 'global' | 'device_group';
+    device_group_guids: string[];
+    permissions: string[];
+    created_at: string;
+    updated_at: string;
+  };
+
+  type UserRoleEligibilityReason =
+    | 'assign_not_allowed'
+    | 'remove_not_allowed'
+    | 'protected_role'
+    | 'protected_target'
+    | 'self_target'
+    | 'missing_caller_scope'
+    | 'scope_exceeds_caller';
+
+  type UserRoleEligibility = {
+    guid: string;
+    name: string;
+    protected_account: boolean;
+    assigned: boolean;
+    can_assign: boolean;
+    can_remove: boolean;
+    allowed_scope_types: PermissionScopeType[];
+    assignable_device_groups: Array<Pick<DeviceGroupItem, 'guid' | 'name'>>;
+    reason_code?: UserRoleEligibilityReason | 'missing_permission' | 'role_grants_roles_assign' | null;
+  };
+
+  type UserRoleEligibilityResponse = {
+    data: UserRoleEligibility[];
+  };
+
+  type UserRolesResponse = {
+    data: UserRoleAssignment[];
+    effective_scope: Record<string, EffectivePermissionScope>;
+  };
+
+  type UserRoleAssignmentParams = {
+    role_guid: string;
+    scope_type: 'global' | 'device_group';
+    device_group_guids?: string[];
+  };
+
+  type ReplaceUserRolesParams = {
+    assignments: UserRoleAssignmentParams[];
   };
 
   type StrategyItem = {
@@ -619,21 +725,34 @@ declare namespace API {
   type StrategyAssignmentDeviceItem = {
     uuid: string;
     id: string;
-    status: number;
   };
 
   type StrategyAssignmentUserItem = {
     guid: string;
-    username: string;
-    email: string;
-    status: number;
-    is_admin: boolean;
+    name: string;
+    is_protected?: boolean;
   };
 
   type StrategyAssignmentDeviceGroupItem = {
     guid: string;
     name: string;
-    note: string;
+  };
+
+  type StrategyTargetDeviceCandidate = {
+    uuid: string;
+    id: string;
+  };
+
+  type StrategyTargetUserCandidate = {
+    guid: string;
+    name: string;
+    is_protected?: boolean;
+  };
+
+  type StrategyTargetCandidateParams = {
+    target_type: 'device' | 'user';
+    current: number;
+    pageSize: number;
   };
 
   type StrategyAssignmentParams = {
@@ -661,6 +780,12 @@ declare namespace API {
   type UpdateUserGroupParams = {
     name?: string;
     note?: string;
+  };
+
+  type StrategyCandidateItem = {
+    guid: string;
+    name: string;
+    note: string;
   };
 
   type UserGroupMoveResult = {

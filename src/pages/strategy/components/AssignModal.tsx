@@ -11,24 +11,37 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
 } from 'antd';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   assignStrategy,
-  getDeviceGroupList,
-  getDeviceList,
-  getAdminUserList,
   getStrategyAssignments,
+  getStrategyTargetCandidates,
+  getStrategyTargetDeviceGroupList,
   unassignStrategy,
 } from '@/services/rustdesk-console';
+import {
+  getAssignableStrategyTargetTypes,
+  type StrategyAssignmentTargetType,
+} from '../strategyAccess';
+import { loadAllCandidatePages } from './pagination';
 
-type TargetType = 'device' | 'user' | 'device_group';
+type TargetType = StrategyAssignmentTargetType;
 
 interface AssignModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   record: API.StrategyItem | null;
+  canAssignUsers: boolean;
   onSuccess: () => void;
+  isSuperAdmin?: boolean;
 }
 
 const targetTypeOptions: { label: React.ReactNode; value: TargetType }[] = [
@@ -62,19 +75,23 @@ const targetTypeOptions: { label: React.ReactNode; value: TargetType }[] = [
 ];
 
 const ASSIGNMENT_PAGE_SIZE = 200;
+const TARGET_PAGE_SIZE = 200;
 
 interface AssignedItem {
   type: TargetType;
   guid: string;
   name: string;
   extra?: string;
+  isProtected?: boolean;
 }
 
 const AssignModal: React.FC<AssignModalProps> = ({
   open,
   onOpenChange,
   record,
+  canAssignUsers,
   onSuccess,
+  isSuperAdmin = false,
 }) => {
   const intl = useIntl();
   const { message: msgApi } = App.useApp();
@@ -82,8 +99,12 @@ const AssignModal: React.FC<AssignModalProps> = ({
   const [selectedGuids, setSelectedGuids] = useState<string[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
 
-  const [deviceList, setDeviceList] = useState<API.DeviceItem[]>([]);
-  const [userList, setUserList] = useState<API.UserItem[]>([]);
+  const [deviceList, setDeviceList] = useState<
+    API.StrategyTargetDeviceCandidate[]
+  >([]);
+  const [userList, setUserList] = useState<API.StrategyTargetUserCandidate[]>(
+    [],
+  );
   const [deviceGroupList, setDeviceGroupList] = useState<API.DeviceGroupItem[]>(
     [],
   );
@@ -91,9 +112,22 @@ const AssignModal: React.FC<AssignModalProps> = ({
 
   const [assignedItems, setAssignedItems] = useState<AssignedItem[]>([]);
   const [assignedLoading, setAssignedLoading] = useState(false);
+  const assignedRequestVersionRef = useRef(0);
+  const optionsRequestVersionRef = useRef(0);
+  const assignableTargetTypes = useMemo(
+    () =>
+      getAssignableStrategyTargetTypes({
+        canAssignUsers,
+      }),
+    [canAssignUsers],
+  );
 
   const loadAssignedTargets = useCallback(async () => {
-    if (!open || !record) return;
+    const requestVersion = ++assignedRequestVersionRef.current;
+    if (!open || !record) {
+      setAssignedItems([]);
+      return;
+    }
     setAssignedLoading(true);
     try {
       const [deviceResult, userResult, groupResult] = await Promise.all([
@@ -102,22 +136,24 @@ const AssignModal: React.FC<AssignModalProps> = ({
           current: 1,
           pageSize: ASSIGNMENT_PAGE_SIZE,
         }),
-        getStrategyAssignments(record.guid, {
-          target_type: 'user',
-          current: 1,
-          pageSize: ASSIGNMENT_PAGE_SIZE,
-        }),
+        canAssignUsers
+          ? getStrategyAssignments(record.guid, {
+              target_type: 'user',
+              current: 1,
+              pageSize: ASSIGNMENT_PAGE_SIZE,
+            })
+          : Promise.resolve({ data: [], total: 0 }),
         getStrategyAssignments(record.guid, {
           target_type: 'device_group',
           current: 1,
           pageSize: ASSIGNMENT_PAGE_SIZE,
         }),
       ]);
+      if (requestVersion !== assignedRequestVersionRef.current) return;
 
       const items: AssignedItem[] = [];
 
-      (deviceResult.data || []).forEach((d) => {
-        const device = d as API.StrategyAssignmentDeviceItem;
+      deviceResult.data.forEach((device) => {
         items.push({
           type: 'device',
           guid: device.uuid,
@@ -125,28 +161,26 @@ const AssignModal: React.FC<AssignModalProps> = ({
         });
       });
 
-      (userResult.data || []).forEach((u) => {
-        const user = u as API.StrategyAssignmentUserItem;
+      userResult.data.forEach((user) => {
         items.push({
           type: 'user',
           guid: user.guid,
-          name: user.username,
-          extra: user.email,
+          name: user.name,
+          isProtected: user.is_protected,
         });
       });
 
-      (groupResult.data || []).forEach((g) => {
-        const group = g as API.StrategyAssignmentDeviceGroupItem;
+      groupResult.data.forEach((group) => {
         items.push({
           type: 'device_group',
           guid: group.guid,
           name: group.name,
-          extra: group.note,
         });
       });
 
       setAssignedItems(items);
     } catch {
+      if (requestVersion !== assignedRequestVersionRef.current) return;
       msgApi.error(
         intl.formatMessage({
           id: 'pages.strategies.loadAssignedFailed',
@@ -154,43 +188,72 @@ const AssignModal: React.FC<AssignModalProps> = ({
         }),
       );
     } finally {
-      setAssignedLoading(false);
+      if (requestVersion === assignedRequestVersionRef.current)
+        setAssignedLoading(false);
     }
-  }, [open, record, intl, msgApi]);
+  }, [canAssignUsers, open, record, intl, msgApi]);
 
   useEffect(() => {
     loadAssignedTargets();
   }, [loadAssignedTargets]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || assignableTargetTypes.includes(targetType)) return;
+    setTargetType(assignableTargetTypes[0]);
+    setSelectedGuids([]);
+  }, [assignableTargetTypes, open, targetType]);
+
+  useEffect(() => {
+    const requestVersion = ++optionsRequestVersionRef.current;
+    setSelectedGuids([]);
+    setDeviceList([]);
+    setUserList([]);
+    setDeviceGroupList([]);
+    if (!open || !assignableTargetTypes.includes(targetType)) {
+      return;
+    }
     setOptionsLoading(true);
     const loadOptions = async () => {
       try {
         switch (targetType) {
           case 'device': {
-            const result = await getDeviceList({ current: 1, pageSize: 200 });
-            setDeviceList(result.data || []);
+            const result = await loadAllCandidatePages((current) =>
+              getStrategyTargetCandidates({
+                target_type: 'device',
+                current,
+                pageSize: TARGET_PAGE_SIZE,
+              }),
+            );
+            if (requestVersion !== optionsRequestVersionRef.current) return;
+            setDeviceList(result);
             break;
           }
           case 'user': {
-            const result = await getAdminUserList({
-              current: 1,
-              pageSize: 200,
-            });
-            setUserList(result.data || []);
+            const result = await loadAllCandidatePages((current) =>
+              getStrategyTargetCandidates({
+                target_type: 'user',
+                current,
+                pageSize: TARGET_PAGE_SIZE,
+              }),
+            );
+            if (requestVersion !== optionsRequestVersionRef.current) return;
+            setUserList(result);
             break;
           }
           case 'device_group': {
-            const result = await getDeviceGroupList({
-              current: 1,
-              pageSize: 200,
-            });
-            setDeviceGroupList(result.data || []);
+            const result = await loadAllCandidatePages((current) =>
+              getStrategyTargetDeviceGroupList({
+                current,
+                pageSize: TARGET_PAGE_SIZE,
+              }),
+            );
+            if (requestVersion !== optionsRequestVersionRef.current) return;
+            setDeviceGroupList(result);
             break;
           }
         }
       } catch {
+        if (requestVersion !== optionsRequestVersionRef.current) return;
         msgApi.error(
           intl.formatMessage({
             id: 'pages.strategies.loadTargetsFailed',
@@ -198,14 +261,41 @@ const AssignModal: React.FC<AssignModalProps> = ({
           }),
         );
       } finally {
-        setOptionsLoading(false);
+        if (requestVersion === optionsRequestVersionRef.current)
+          setOptionsLoading(false);
       }
     };
     loadOptions();
-  }, [open, targetType]);
+  }, [assignableTargetTypes, intl, msgApi, open, targetType]);
 
   const handleAssign = async () => {
     if (!record || selectedGuids.length === 0) return;
+    if (
+      targetType === 'user' &&
+      !isSuperAdmin &&
+      selectedGuids.some((guid) =>
+        userList.some(
+          (user) => user.guid === guid && user.is_protected === true,
+        ),
+      )
+    ) {
+      msgApi.error(
+        intl.formatMessage({
+          id: 'pages.users.protectedAccountInfo',
+          defaultMessage:
+            'Protected accounts can only be managed by the super administrator.',
+        }),
+      );
+      setSelectedGuids((current) =>
+        current.filter(
+          (guid) =>
+            !userList.some(
+              (user) => user.guid === guid && user.is_protected === true,
+            ),
+        ),
+      );
+      return;
+    }
     setAssignLoading(true);
     try {
       const result = await assignStrategy(record.guid, {
@@ -253,6 +343,25 @@ const AssignModal: React.FC<AssignModalProps> = ({
 
   const handleUnassign = async (tType: TargetType, targetGuid: string) => {
     if (!record) return;
+    if (
+      tType === 'user' &&
+      !isSuperAdmin &&
+      assignedItems.some(
+        (item) =>
+          item.type === 'user' &&
+          item.guid === targetGuid &&
+          item.isProtected === true,
+      )
+    ) {
+      msgApi.error(
+        intl.formatMessage({
+          id: 'pages.users.protectedAccountInfo',
+          defaultMessage:
+            'Protected accounts can only be managed by the super administrator.',
+        }),
+      );
+      return;
+    }
     try {
       const result = await unassignStrategy(record.guid, {
         target_type: tType,
@@ -289,13 +398,22 @@ const AssignModal: React.FC<AssignModalProps> = ({
     switch (targetType) {
       case 'device':
         return deviceList.map((d) => ({
-          value: d.uuid || d.guid,
-          label: `${d.id} - ${d.info?.device_name || d.info?.username || ''}`,
+          value: d.uuid,
+          label: d.id,
         }));
       case 'user':
         return userList.map((u) => ({
           value: u.guid,
-          label: `${u.name} (${u.email})`,
+          label: u.name,
+          disabled: !isSuperAdmin && u.is_protected === true,
+          title:
+            !isSuperAdmin && u.is_protected === true
+              ? intl.formatMessage({
+                  id: 'pages.users.protectedAccountInfo',
+                  defaultMessage:
+                    'Protected accounts can only be managed by the super administrator.',
+                })
+              : undefined,
         }));
       case 'device_group':
         return deviceGroupList.map((g) => ({
@@ -387,12 +505,27 @@ const AssignModal: React.FC<AssignModalProps> = ({
                 defaultMessage: 'No',
               })}
             >
-              <Button
-                type="text"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-              />
+              <Tooltip
+                title={
+                  !isSuperAdmin && item.isProtected === true
+                    ? intl.formatMessage({
+                        id: 'pages.users.protectedAccountInfo',
+                        defaultMessage:
+                          'Protected accounts can only be managed by the super administrator.',
+                      })
+                    : undefined
+                }
+              >
+                <span>
+                  <Button
+                    type="text"
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    disabled={!isSuperAdmin && item.isProtected === true}
+                  />
+                </span>
+              </Tooltip>
             </Popconfirm>
           </div>
         ))}
@@ -434,11 +567,16 @@ const AssignModal: React.FC<AssignModalProps> = ({
           />
         </div>
         <Radio.Group
-          options={targetTypeOptions}
+          options={targetTypeOptions.filter((option) =>
+            assignableTargetTypes.includes(option.value),
+          )}
           value={targetType}
           onChange={(e) => {
             setTargetType(e.target.value);
             setSelectedGuids([]);
+            setDeviceList([]);
+            setUserList([]);
+            setDeviceGroupList([]);
           }}
           optionType="button"
           buttonStyle="solid"
@@ -453,7 +591,6 @@ const AssignModal: React.FC<AssignModalProps> = ({
             loading={optionsLoading}
             showSearch
             optionFilterProp="label"
-            maxCount={200}
             placeholder={intl.formatMessage({
               id: 'pages.strategies.selectTarget',
               defaultMessage: 'Select target',
