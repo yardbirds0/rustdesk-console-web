@@ -102,6 +102,7 @@ const ConsoleAudit: React.FC = () => {
             current: params.current || 1,
             pageSize: params.pageSize || 20,
             operator: params.operator,
+            created_at: params.created_at,
           });
           return {
             data: result.data || [],

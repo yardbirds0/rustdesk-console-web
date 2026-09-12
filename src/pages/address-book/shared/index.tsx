@@ -151,9 +151,10 @@ const SharedAddressBook: React.FC = () => {
                 access.canAddressBooksEdit && effectiveRule >= 2;
               const canDeleteRecord =
                 access.canAddressBooksEdit && record.is_owner;
-              return canViewAccess || canEditRecord || canDeleteRecord ? (
+              const canOpenAccessModal = canViewAccess || canShareRecord;
+              return canOpenAccessModal || canEditRecord || canDeleteRecord ? (
                 <Space size={0} split={<Divider type="vertical" />}>
-                  {canViewAccess && (
+                  {canOpenAccessModal && (
                     <Button
                       key="shareAccess"
                       type="link"

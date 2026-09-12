@@ -23,6 +23,7 @@ const StrategyList: React.FC = () => {
   const { initialState } = useModel('@@initialState');
   const { message: msgApi } = App.useApp();
   const actionRef = useRef<ActionType>(null);
+  const openRequestVersionRef = useRef(0);
 
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [detailMode, setDetailMode] = useState<'view' | 'edit' | null>(null);
@@ -63,11 +64,14 @@ const StrategyList: React.FC = () => {
     record: API.StrategyItem,
     mode: 'view' | 'edit',
   ) => {
+    const requestVersion = ++openRequestVersionRef.current;
     try {
       const detail = await getStrategy(record.guid);
+      if (requestVersion !== openRequestVersionRef.current) return;
       setCurrentRecord(detail);
       setDetailMode(mode);
     } catch {
+      if (requestVersion !== openRequestVersionRef.current) return;
       msgApi.error(
         intl.formatMessage({
           id: 'pages.strategies.fetchDetailFailed',

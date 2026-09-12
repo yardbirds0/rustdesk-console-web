@@ -45,6 +45,8 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
   const requestVersionRef = useRef(0);
   const [memberRows, setMemberRows] = useState<API.UserItem[]>([]);
   const [userRows, setUserRows] = useState<API.UserItem[]>([]);
+  const memberRowsCacheRef = useRef(new Map<string, API.UserItem>());
+  const userRowsCacheRef = useRef(new Map<string, API.UserItem>());
   const protectedAccountInfo = intl.formatMessage({
     id: 'pages.users.protectedAccountInfo',
     defaultMessage:
@@ -52,16 +54,18 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
   });
 
   useEffect(() => {
+    const cachedRows = [...memberRowsCacheRef.current.values()];
     setMemberKeys((keys) =>
-      filterManageableSelection(keys, memberRows, isSuperAdmin),
+      filterManageableSelection(keys, cachedRows, isSuperAdmin),
     );
-  }, [isSuperAdmin, memberRows]);
+  }, [isSuperAdmin]);
 
   useEffect(() => {
+    const cachedRows = [...userRowsCacheRef.current.values()];
     setUserKeys((keys) =>
-      filterManageableSelection(keys, userRows, isSuperAdmin),
+      filterManageableSelection(keys, cachedRows, isSuperAdmin),
     );
-  }, [isSuperAdmin, userRows]);
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     const requestVersion = ++requestVersionRef.current;
@@ -70,6 +74,8 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
     setDestinationGuid(undefined);
     setMemberRows([]);
     setUserRows([]);
+    memberRowsCacheRef.current = new Map();
+    userRowsCacheRef.current = new Map();
     setGroupsLoading(false);
     setMoving(false);
     if (!open) return;
@@ -101,7 +107,10 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
   }, [group?.guid, intl, msgApi, open]);
 
   const handleMove = async (targetGuid: string, keys: React.Key[]) => {
-    const rows = [...memberRows, ...userRows];
+    const rows = [
+      ...memberRowsCacheRef.current.values(),
+      ...userRowsCacheRef.current.values(),
+    ];
     const manageableKeys = filterManageableSelection(keys, rows, isSuperAdmin);
     if (
       !group ||
@@ -197,6 +206,9 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
           return { data: [], total: 0, success: false };
         }
         setMemberRows(result.data);
+        for (const row of result.data) {
+          memberRowsCacheRef.current.set(row.guid, row);
+        }
         return {
           data: result.data,
           total: result.total,
@@ -215,7 +227,11 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
         }),
         onChange: (keys) =>
           setMemberKeys(
-            filterManageableSelection(keys, memberRows, isSuperAdmin),
+            filterManageableSelection(
+              keys,
+              [...memberRowsCacheRef.current.values()],
+              isSuperAdmin,
+            ),
           ),
       }}
       tableAlertRender={false}
@@ -290,6 +306,9 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
           return { data: [], total: 0, success: false };
         }
         setUserRows(result.data);
+        for (const row of result.data) {
+          userRowsCacheRef.current.set(row.guid, row);
+        }
         return {
           data: result.data,
           total: result.total,
@@ -307,7 +326,13 @@ const UserGroupMembersModal: React.FC<UserGroupMembersModalProps> = ({
               (record.is_admin || record.is_protected === true)),
         }),
         onChange: (keys) =>
-          setUserKeys(filterManageableSelection(keys, userRows, isSuperAdmin)),
+          setUserKeys(
+            filterManageableSelection(
+              keys,
+              [...userRowsCacheRef.current.values()],
+              isSuperAdmin,
+            ),
+          ),
       }}
       tableAlertRender={false}
       search={{ filterType: 'light' }}

@@ -20,6 +20,18 @@ const isPermissionItem = (value: unknown): value is API.PermissionItem => {
   );
 };
 
+const isEffectivePermissionScope = (
+  value: unknown,
+): value is API.EffectivePermissionScope => {
+  if (!value || typeof value !== 'object') return false;
+  const scope = value as Partial<API.EffectivePermissionScope>;
+  return (
+    (scope.scope_type === 'global' || scope.scope_type === 'device_group') &&
+    Array.isArray(scope.device_group_guids) &&
+    scope.device_group_guids.every((guid) => typeof guid === 'string')
+  );
+};
+
 /**
  * The permission catalog is owned by the backend.  The frontend only renders
  * the definitions returned by this endpoint and never invents permission
@@ -60,7 +72,8 @@ export async function getMyPermissions(options?: { [key: string]: any }) {
     ) ||
     !payload.scopes ||
     typeof payload.scopes !== 'object' ||
-    Array.isArray(payload.scopes)
+    Array.isArray(payload.scopes) ||
+    !Object.values(payload.scopes).every(isEffectivePermissionScope)
   ) {
     throw new Error('Invalid effective permissions response');
   }

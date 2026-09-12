@@ -98,7 +98,7 @@ const UserList: React.FC<UserListProps> = ({
     if (!userGroupGuid || !access.canUserGroupsMembership) return;
     void loadUserGroups();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userGroupGuid]);
+  }, [userGroupGuid, access.canUserGroupsMembership]);
 
   const handleMove = async (targetGuid: string, userGuids: string[]) => {
     if (

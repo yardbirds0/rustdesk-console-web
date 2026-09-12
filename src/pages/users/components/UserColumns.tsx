@@ -53,7 +53,7 @@ export const useUserColumns = (
     canMove,
     canRolesAssign,
     canRolesView,
-    canUsersView,
+
     currentUserGuid,
     onEdit,
     onRoles,
@@ -286,7 +286,7 @@ export const useUserColumns = (
 
   return [
     ...baseColumns,
-    ...(isSuperAdmin || canRolesView || canUsersView ? [roleColumn] : []),
+    ...(isSuperAdmin || canRolesView ? [roleColumn] : []),
     actionColumn,
   ];
 };

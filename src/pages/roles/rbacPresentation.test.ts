@@ -97,7 +97,8 @@ test.each(LOCALES)(
       'pages.common.close',
       'pages.common.back',
     ]) {
-      expect(messages[key]?.trim()).not.toBe('');
+      expect(typeof messages[key]).toBe('string');
+      expect(messages[key].trim().length).toBeGreaterThan(0);
     }
   },
 );

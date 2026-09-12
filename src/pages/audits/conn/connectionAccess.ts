@@ -12,7 +12,8 @@ export const canDisconnectAuditRecord = (
   record.can_disconnect === true &&
   typeof record.deviceUuid === 'string' &&
   record.deviceUuid.length > 0 &&
-  record.connId !== undefined &&
+  (typeof record.connId === 'number' ||
+    (typeof record.connId === 'string' && record.connId.trim() !== '')) &&
   Number.isInteger(Number(record.connId));
 
 export const canDisconnectActiveConnection = (
