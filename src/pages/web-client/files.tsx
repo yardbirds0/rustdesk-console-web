@@ -422,88 +422,95 @@ export const FilePanel = forwardRef<
       ? !!localView && !localLoading && !busy
       : canNavigate;
     return (
-      <div
-        className={styles.fileList}
-        aria-busy={localPane ? localLoading : browsing}
-      >
-        <div className={styles.fileColumns} aria-hidden="true">
+      <>
+        <div
+          className={styles.fileColumns}
+          aria-hidden="true"
+          data-file-header={localPane ? 'local' : 'remote'}
+        >
           <span>{text('fileName', 'Name')}</span>
           <span>{text('fileSize', 'Size')}</span>
         </div>
-        {!rows.length && (
-          <div className={styles.emptyFiles}>
-            <FolderOpenOutlined />
-            <span>
-              {text(
-                localPane && !localView ? 'localDirectoryHint' : 'fileEmpty',
-                localPane && !localView
-                  ? 'Choose a local folder to browse and receive files.'
-                  : 'This directory is empty',
-              )}
-            </span>
-          </div>
-        )}
-        <ul
-          aria-label={text(
-            localPane ? 'localEntries' : 'fileEntries',
-            localPane ? 'Local folder contents' : 'Remote directory contents',
-          )}
+        <div
+          className={styles.fileList}
+          aria-busy={localPane ? localLoading : browsing}
+          data-file-list={localPane ? 'local' : 'remote'}
         >
-          {rows.map((entry) => (
-            <li key={entry.path}>
-              <button
-                type="button"
-                className={styles.fileRow}
-                aria-label={entry.name}
-                aria-pressed={entry.path === selected}
-                disabled={!allowed}
-                title={entry.name}
-                onClick={() =>
-                  localPane
-                    ? setLocalSelected(entry.path)
-                    : setSelectedPath(entry.path)
-                }
-                onDoubleClick={() => {
-                  if (entry.directory)
+          {!rows.length && (
+            <div className={styles.emptyFiles}>
+              <FolderOpenOutlined />
+              <span>
+                {text(
+                  localPane && !localView ? 'localDirectoryHint' : 'fileEmpty',
+                  localPane && !localView
+                    ? 'Choose a local folder to browse and receive files.'
+                    : 'This directory is empty',
+                )}
+              </span>
+            </div>
+          )}
+          <ul
+            aria-label={text(
+              localPane ? 'localEntries' : 'fileEntries',
+              localPane ? 'Local folder contents' : 'Remote directory contents',
+            )}
+          >
+            {rows.map((entry) => (
+              <li key={entry.path}>
+                <button
+                  type="button"
+                  className={styles.fileRow}
+                  aria-label={entry.name}
+                  aria-pressed={entry.path === selected}
+                  disabled={!allowed}
+                  title={entry.name}
+                  onClick={() =>
                     localPane
-                      ? void navigateLocal(
-                          `${localView?.path === '/' ? '' : localView?.path}/${
-                            entry.name
-                          }`,
-                        )
-                      : browse(entry.path);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && entry.directory) {
-                    event.preventDefault();
-                    localPane
-                      ? void navigateLocal(
-                          `${localView?.path === '/' ? '' : localView?.path}/${
-                            entry.name
-                          }`,
-                        )
-                      : browse(entry.path);
+                      ? setLocalSelected(entry.path)
+                      : setSelectedPath(entry.path)
                   }
-                }}
-              >
-                <span className={styles.fileName}>
-                  {entry.directory ? <FolderOutlined /> : <FileOutlined />}{' '}
-                  {entry.name}
-                </span>
-                <span className={styles.fileSize}>
-                  {entry.directory || entry.size === undefined
-                    ? '—'
-                    : entry.size < 1024
-                      ? entry.size + ' B'
-                      : entry.size < 1048576
-                        ? (entry.size / 1024).toFixed(1) + ' KiB'
-                        : (entry.size / 1048576).toFixed(1) + ' MiB'}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
+                  onDoubleClick={() => {
+                    if (entry.directory)
+                      localPane
+                        ? void navigateLocal(
+                            `${localView?.path === '/' ? '' : localView?.path}/${
+                              entry.name
+                            }`,
+                          )
+                        : browse(entry.path);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && entry.directory) {
+                      event.preventDefault();
+                      localPane
+                        ? void navigateLocal(
+                            `${localView?.path === '/' ? '' : localView?.path}/${
+                              entry.name
+                            }`,
+                          )
+                        : browse(entry.path);
+                    }
+                  }}
+                >
+                  <span className={styles.fileName}>
+                    {entry.directory ? <FolderOutlined /> : <FileOutlined />}
+                    <span>{entry.name}</span>
+                  </span>
+                  <span className={styles.fileSize}>
+                    {entry.directory || entry.size === undefined
+                      ? '—'
+                      : entry.size < 1024
+                        ? entry.size + ' B'
+                        : entry.size < 1048576
+                          ? (entry.size / 1024).toFixed(1) + ' KiB'
+                          : (entry.size / 1048576).toFixed(1) + ' MiB'}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </>
     );
   };
   const localFile = localView?.entries.find(
@@ -575,22 +582,25 @@ export const FilePanel = forwardRef<
                   }
                 }}
               />
-              <Button
-                disabled={!password}
-                onClick={() => {
-                  post({
-                    type: 'files-password',
-                    password,
-                    fileGeneration: generation.current,
-                  });
-                  setPassword('');
-                }}
-              >
-                {text('authenticate', 'Send password')}
-              </Button>
-              <Button onClick={disconnectFiles}>
-                {text('cancelConnection', 'Cancel connection')}
-              </Button>
+              <div className={styles.fileAuthActions}>
+                <Button onClick={disconnectFiles}>
+                  {text('cancelConnection', 'Cancel connection')}
+                </Button>
+                <Button
+                  type="primary"
+                  disabled={!password}
+                  onClick={() => {
+                    post({
+                      type: 'files-password',
+                      password,
+                      fileGeneration: generation.current,
+                    });
+                    setPassword('');
+                  }}
+                >
+                  {text('authenticate', 'Connect')}
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -742,45 +752,55 @@ export const FilePanel = forwardRef<
               {selected?.name ||
                 text('fileSelectHint', 'Select a file to download')}
             </span>
-            <details
-              className={styles.fileFallback}
-              open={!localView || localError || error === 'localFiles'}
-            >
-              <summary>
-                {text('fileFallback', 'Other transfer methods')}
-              </summary>
-              <div className={styles.fileFallbackActions}>
-                <label className={styles.uploadField}>
-                  <UploadOutlined />{' '}
-                  {text('fileUploadHere', 'Upload to this folder')}
-                  <input
-                    aria-label={text('fileUploadHere', 'Upload to this folder')}
-                    type="file"
-                    multiple
-                    disabled={!canNavigate || !path || path === '/'}
-                    onChange={(event) => {
-                      const files = Array.from(event.target.files || []);
-                      event.target.value = '';
-                      if (files.length && canNavigate && path && path !== '/')
-                        command({ type: 'upload', path, files });
-                    }}
-                  />
-                </label>
-                <Button
-                  icon={<DownloadOutlined />}
-                  disabled={!canNavigate || !selected || selected.directory}
-                  onClick={() => {
-                    if (selected && !selected.directory)
-                      void prepareDownload(selected);
-                  }}
-                >
-                  {text('fileDownloadSelected', 'Download selected file')}
-                </Button>
-              </div>
-            </details>
           </div>
         </section>
       </div>
+      <details
+        className={styles.fileFallback}
+        data-file-fallback
+        open={!localView || localError || error === 'localFiles'}
+      >
+        <summary>{text('fileFallback', 'File upload and download')}</summary>
+        <div className={styles.fileFallbackActions}>
+          <div className={styles.fileFallbackOption}>
+            <label className={styles.uploadField}>
+              <UploadOutlined />{' '}
+              {text('fileUploadHere', 'Upload to this folder')}
+              <input
+                aria-label={text('fileUploadHere', 'Upload to this folder')}
+                type="file"
+                multiple
+                disabled={!canNavigate || !path || path === '/'}
+                onChange={(event) => {
+                  const files = Array.from(event.target.files || []);
+                  event.target.value = '';
+                  if (files.length && canNavigate && path && path !== '/')
+                    command({ type: 'upload', path, files });
+                }}
+              />
+            </label>
+            <small title={path}>
+              {text('fileUploadTarget', 'Remote folder')}: {path || '—'}
+            </small>
+          </div>
+          <div className={styles.fileFallbackOption}>
+            <Button
+              icon={<DownloadOutlined />}
+              disabled={!canNavigate || !selected || selected.directory}
+              onClick={() => {
+                if (selected && !selected.directory)
+                  void prepareDownload(selected);
+              }}
+            >
+              {text('fileDownloadSelected', 'Download selected file')}
+            </Button>
+            <small title={selected?.name}>
+              {selected?.name ||
+                text('fileSelectHint', 'Select a file to download')}
+            </small>
+          </div>
+        </div>
+      </details>
       <div className={styles.fileStatusBar} role="status">
         {progress ? (
           <>

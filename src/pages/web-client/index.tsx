@@ -746,6 +746,7 @@ export default function WebClientPage() {
     }
   };
   const submit = () => {
+    if (!password) return;
     post({ type: 'password', password });
     setPassword('');
     setError('');
@@ -835,12 +836,12 @@ export default function WebClientPage() {
       {error || fileStatus.error || pasteStatus === 'failed'
         ? text('errorBadge', 'Operation failed')
         : !permissions.keyboard
-        ? text('viewOnlyBadge', 'View only')
-        : pasteStatus === 'sent'
-        ? text('pasteSentBadge', 'Clipboard sent')
-        : pasteStatus === 'sending'
-        ? text('pasteSendingBadge', 'Sending clipboard')
-        : text('noticeBadge', 'Session notice')}
+          ? text('viewOnlyBadge', 'View only')
+          : pasteStatus === 'sent'
+            ? text('pasteSentBadge', 'Clipboard sent')
+            : pasteStatus === 'sending'
+              ? text('pasteSendingBadge', 'Sending clipboard')
+              : text('noticeBadge', 'Session notice')}
     </button>
   ) : null;
   return (
@@ -964,17 +965,17 @@ export default function WebClientPage() {
                             authenticating
                               ? 'authTitle'
                               : connected
-                              ? 'waitingFrame'
-                              : activeSession
-                              ? 'state.' + state
-                              : 'state.failed',
+                                ? 'waitingFrame'
+                                : activeSession
+                                  ? 'state.' + state
+                                  : 'state.failed',
                             authenticating
                               ? 'Approve your connection'
                               : connected
-                              ? 'Waiting for the desktop'
-                              : activeSession
-                              ? state
-                              : 'Connection failed',
+                                ? 'Waiting for the desktop'
+                                : activeSession
+                                  ? state
+                                  : 'Connection failed',
                           )}
                         </h2>
                       </>
@@ -984,13 +985,13 @@ export default function WebClientPage() {
                         authenticating
                           ? 'approval'
                           : activeSession
-                          ? 'connectingHint'
-                          : 'idleHint',
+                            ? 'connectingHint'
+                            : 'idleHint',
                         authenticating
                           ? 'You can also approve the connection on the remote device.'
                           : activeSession
-                          ? 'The session is being prepared. You can disconnect at any time.'
-                          : 'Choose a device below, or enter its ID to connect.',
+                            ? 'The session is being prepared. You can disconnect at any time.'
+                            : 'Choose a device below, or enter its ID to connect.',
                       )}
                     </p>
                     {authenticating && (
@@ -1010,22 +1011,26 @@ export default function WebClientPage() {
                           onPressEnter={submit}
                           maxLength={4096}
                         />
-                        <Button
-                          type="primary"
-                          onClick={submit}
-                          disabled={!password}
-                        >
-                          {text('authenticate', 'Send password')}
-                        </Button>
+                        <div className={styles.stageActions} data-stage-actions>
+                          <Button onClick={disconnect}>
+                            {text('cancelConnection', 'Cancel connection')}
+                          </Button>
+                          <Button
+                            type="primary"
+                            onClick={submit}
+                            disabled={!password}
+                          >
+                            {text('authenticate', 'Connect')}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {!authenticating && (
+                      <div className={styles.stageActions} data-stage-actions>
                         <Button onClick={disconnect}>
                           {text('cancelConnection', 'Cancel connection')}
                         </Button>
                       </div>
-                    )}
-                    {!authenticating && (
-                      <Button onClick={disconnect}>
-                        {text('cancelConnection', 'Cancel connection')}
-                      </Button>
                     )}
                   </div>
                 </div>
@@ -1463,8 +1468,8 @@ export default function WebClientPage() {
                       {kxVersion === undefined
                         ? '—'
                         : kxVersion === 0
-                        ? text('legacyBadge', 'Legacy encryption')
-                        : text('newEncryption', 'New key exchange')}
+                          ? text('legacyBadge', 'Legacy encryption')
+                          : text('newEncryption', 'New key exchange')}
                     </dd>
                     <dt>{text('connectionRoute', 'Connection')}</dt>
                     <dd>{text('relayConnection', 'Encrypted relay')}</dd>
@@ -1552,12 +1557,12 @@ export default function WebClientPage() {
                     pasteStatus === 'failed'
                       ? 'Paste failed. Check the content and try again.'
                       : pasteStatus === 'denied'
-                      ? 'The remote device has disabled clipboard or keyboard access.'
-                      : pasteStatus === 'sending'
-                      ? 'Sending clipboard…'
-                      : pasteStatus === 'sent'
-                      ? 'Paste sent to the remote device.'
-                      : 'Focus the remote desktop and press Ctrl/Cmd+V to paste text or a PNG image.',
+                        ? 'The remote device has disabled clipboard or keyboard access.'
+                        : pasteStatus === 'sending'
+                          ? 'Sending clipboard…'
+                          : pasteStatus === 'sent'
+                            ? 'Paste sent to the remote device.'
+                            : 'Focus the remote desktop and press Ctrl/Cmd+V to paste text or a PNG image.',
                   )}
                 </span>
               </div>

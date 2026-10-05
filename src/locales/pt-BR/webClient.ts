@@ -9,7 +9,7 @@ export default {
   'webClient.retry': 'Tentar novamente',
   'webClient.fullscreen': 'Tela cheia',
   'webClient.password': 'Senha do dispositivo remoto',
-  'webClient.authenticate': 'Enviar senha',
+  'webClient.authenticate': 'Conectar',
   'webClient.approval':
     'Você também pode aprovar a conexão no dispositivo remoto.',
   'webClient.disabled': 'O administrador desativou o Cliente Web.',
@@ -132,14 +132,14 @@ export default {
   'webClient.clipboardRetryHint': 'Browser blocked clipboard sync.',
   'webClient.clipboardRetry': 'Click to copy',
   'webClient.legacyFileBadge': 'File connection: legacy encryption',
-  'webClient.legacyTitle': 'About this encryption warning',
+  'webClient.legacyTitle': 'Criptografia antiga',
   'webClient.remoteVersion': 'Remote client',
   'webClient.legacyRisk':
-    'This connection uses an older key exchange with a risk of key and nonce reuse across directions. This can weaken confidentiality; it does not mean the connection is unencrypted.',
+    'A conexão é criptografada, mas o método antigo tem um risco conhecido que pode reduzir a privacidade do conteúdo transferido.',
   'webClient.legacyUpgrade':
-    'RustDesk 1.4.9 still uses this exchange. We verified a specific official 1.5.0 nightly build with the new exchange; a stable release containing this change has not been verified. Upgrade the remote client and reconnect; the negotiated exchange determines this warning.',
-  'webClient.legacyVerified':
-    'Verified 2026-09-30 · Windows nightly asset SHA-256 starts dc446869860d. Nightly is a development build; a version label alone is not proof.',
+    'Atualize o RustDesk no dispositivo remoto e reconecte.',
+  'webClient.legacyCompatibility':
+    'O RustDesk 1.4.9 usa o método antigo. O novo foi verificado em uma compilação oficial específica 1.5.0 nightly. Nightly é uma versão de desenvolvimento; o número da versão não garante a correção.',
   'webClient.cancelConnection': 'Cancel connection',
   'webClient.localFiles': 'Local files',
   'webClient.localChooseFolder': 'Choose folder',
@@ -185,6 +185,7 @@ export default {
   'webClient.newEncryption': 'New key exchange',
   'webClient.connectionRoute': 'Connection',
   'webClient.relayConnection': 'Encrypted relay',
-  'webClient.fileFallback': 'Outras formas de transferência',
+  'webClient.fileFallback': 'Upload e download de arquivos',
   'webClient.fileUsePassword': 'Usar senha',
+  'webClient.fileUploadTarget': 'Pasta remota',
 };

@@ -31,9 +31,9 @@ export default {
   'webClient.tools': '会话工具',
   'webClient.exitFullscreen': '退出全屏',
   'webClient.idleHint': '在下方选择设备，或输入设备 ID 后连接。',
-  'webClient.authTitle': '确认这次连接',
+  'webClient.authTitle': '输入设备密码',
   'webClient.waitingFrame': '正在等待远程画面',
-  'webClient.connectingHint': '正在建立会话，你可以随时断开连接。',
+  'webClient.connectingHint': '请稍候。',
   'webClient.audioHint': '需要时开启远端声音。断开连接后，播放会自动停止。',
   'webClient.audioDenied': '被控设备已关闭声音权限。',
   'webClient.audioPlaying': '正在播放声音',
@@ -52,8 +52,8 @@ export default {
   'webClient.retry': '重试',
   'webClient.fullscreen': '全屏',
   'webClient.password': '被控设备密码',
-  'webClient.authenticate': '发送密码',
-  'webClient.approval': '也可以在被控设备上确认连接。',
+  'webClient.authenticate': '连接',
+  'webClient.approval': '也可以等待对方同意连接。',
   'webClient.disabled': '管理员尚未启用网页远控。',
   'webClient.unavailable': '后端暂不支持网页远控，或部署配置不可用。',
   'webClient.notice':
@@ -172,14 +172,13 @@ export default {
   'webClient.clipboardRetryHint': '浏览器未允许同步剪贴板。',
   'webClient.clipboardRetry': '点击复制',
   'webClient.legacyFileBadge': '文件会话：旧版加密',
-  'webClient.legacyTitle': '为什么显示旧版加密？',
+  'webClient.legacyTitle': '旧版加密',
   'webClient.remoteVersion': '远端客户端',
   'webClient.legacyRisk':
-    '当前连接使用旧版密钥交换，双向加密存在密钥与计数值复用问题，可能影响传输内容的保密性。这不表示连接没有加密，也不表示已经发生窃听。',
-  'webClient.legacyUpgrade':
-    'RustDesk 1.4.9 仍使用此方案。已验证支持新握手的是指定的官方 1.5.0 nightly 构建；截至核查日，尚未核实到包含该改进的稳定发行版。需要升级的是远端 RustDesk 客户端，重连后以实际协商结果为准。',
-  'webClient.legacyVerified':
-    '核验日期：2026-09-30。Windows nightly 资产 SHA-256 前缀 dc446869860d。nightly 是开发构建，不能只凭“1.5.0”版本号判断。',
+    '连接仍已加密，但旧版方案存在已知风险，可能降低传输内容的保密性。',
+  'webClient.legacyUpgrade': '建议更新远端 RustDesk 后重新连接。',
+  'webClient.legacyCompatibility':
+    '1.4.9 为旧方案。已验证的官方 1.5.0 nightly 支持新方案；nightly 是开发版，不能只凭版本号判断。',
   'webClient.cancelConnection': '取消连接',
   'webClient.localFiles': '本机文件',
   'webClient.localChooseFolder': '选择文件夹',
@@ -221,6 +220,7 @@ export default {
   'webClient.newEncryption': '新密钥交换',
   'webClient.connectionRoute': '连接方式',
   'webClient.relayConnection': '加密中继',
-  'webClient.fileFallback': '其他传输方式',
+  'webClient.fileFallback': '普通文件传输',
   'webClient.fileUsePassword': '使用密码',
+  'webClient.fileUploadTarget': '远端文件夹',
 };

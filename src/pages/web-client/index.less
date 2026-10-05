@@ -10,21 +10,18 @@
   max-width: 1280px;
   margin: 0 auto;
   color: var(--wc-text);
+  font-size: 14px;
+  line-height: 1.5;
   [hidden] {
     display: none !important;
   }
-  button,
-  input,
-  select,
-  textarea {
+  :where(button, input, select, textarea) {
     font: inherit;
   }
   button {
     -webkit-tap-highlight-color: transparent;
   }
-  button:focus-visible,
-  select:focus-visible,
-  canvas:focus-visible {
+  :where(button, select, canvas):focus-visible {
     outline: 2px solid var(--wc-accent);
     outline-offset: 3px;
   }
@@ -32,6 +29,10 @@
     cursor: not-allowed;
   }
   :global(.ant-btn) {
+    height: 36px;
+    padding: 0 12px;
+    font-size: 14px;
+    line-height: 1;
     border-radius: 8px;
     transition: background-color 160ms, border-color 160ms, color 160ms;
   }
@@ -40,7 +41,12 @@
   }
   :global(.ant-input),
   :global(.ant-input-affix-wrapper) {
+    height: 36px;
+    font-size: 14px;
     border-radius: 8px;
+  }
+  :global(.ant-input-affix-wrapper .ant-input) {
+    height: auto;
   }
   &[data-active-session='true'],
   &:fullscreen[data-active-session='true'] {
@@ -156,12 +162,12 @@
     font-size: 12px;
   }
   input {
-    height: 42px;
-    font-size: 15px;
+    height: 36px;
+    font-size: 14px;
   }
 }
 .connectionCard > button {
-  height: 42px;
+  height: 36px;
 }
 .connectionHint {
   display: flex;
@@ -171,7 +177,7 @@
   color: var(--wc-muted);
   font-size: 12px;
   line-height: 1.8;
-  .anticon {
+  :global(.anticon) {
     margin-top: 4px;
   }
 }
@@ -193,7 +199,7 @@
 .deviceCount {
   padding: 1px 7px;
   color: var(--wc-muted);
-  font-size: 11px;
+  font-size: 12px;
   background: var(--wc-soft);
   border-radius: 6px;
 }
@@ -266,19 +272,19 @@
   }
   strong {
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 20px;
   }
 }
 .deviceId {
   color: var(--wc-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 .deviceSystem {
   color: var(--wc-muted);
-  font-size: 10px;
-  line-height: 17px;
+  font-size: 12px;
+  line-height: 18px;
 }
 .devicePresence {
   position: absolute;
@@ -289,7 +295,7 @@
   align-items: center;
   padding-left: 5px;
   color: var(--wc-muted);
-  font-size: 10px;
+  font-size: 12px;
   background: var(--wc-bg);
   border-radius: 4px;
   i {
@@ -331,8 +337,8 @@
   align-items: center;
   font-variant-numeric: tabular-nums;
   button {
-    width: 30px;
-    height: 30px;
+    width: 36px;
+    height: 36px;
   }
 }
 .deviceEmpty {
@@ -345,6 +351,7 @@
   text-align: center;
   place-items: center;
 }
+/* 画面与会话控件分层；工具开合不改变canvas的布局。 */
 .workspace {
   position: relative;
   display: grid;
@@ -355,16 +362,14 @@
   overflow: hidden;
 }
 .screen {
-  grid-row: 1;
-  grid-column: 1;
-  width: 100%;
-  height: 100%;
-}
-.screen {
   position: relative;
   display: flex;
+  grid-row: 1;
+  grid-column: 1;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -374,12 +379,13 @@
     flex: 0 1 auto;
     min-width: 0;
   }
-  &[data-ready='false'] {
-    background-image: radial-gradient(
-      circle at 50% 18%,
-      #1e324d 0,
-      transparent 62%
-    );
+  &[data-view-style='original'] {
+    display: block;
+    overflow: auto;
+    canvas {
+      display: block;
+      margin: auto;
+    }
   }
 }
 .pointer {
@@ -399,79 +405,109 @@
   justify-content: center;
   padding: 24px;
   overflow: auto;
-  background: #10172388;
+  background: #101723;
   inset: 0;
 }
 .stageCard {
-  max-width: 440px;
+  width: 360px;
+  max-width: 100%;
   color: #f4f7fb;
   text-align: center;
-  animation: panelEnter 200ms ease-out;
+  animation: contentEnter 140ms ease-out;
   h2 {
-    margin: 10px 0 12px;
+    margin: 16px 0 12px;
     color: #f4f7fb;
-    font-weight: 550;
-    font-size: clamp(21px, 2.4vw, 30px);
-    letter-spacing: -0.7px;
+    font-weight: 600;
+    font-size: 24px;
+    line-height: 1.4;
   }
   p {
-    max-width: 360px;
-    margin: 0 auto;
+    margin: 0;
     color: #a9b7ca;
-    font-size: 13px;
-    line-height: 1.9;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  :global(.ant-btn) {
+    min-width: 104px;
+    color: #e4edf9;
+    background: #1c2939;
+    border-color: #ffffff40;
+    box-shadow: none;
+    &:hover:not(:disabled) {
+      color: #fff;
+      background: #2a3a50;
+      border-color: #9ec9ff;
+    }
+    &:focus-visible {
+      outline-color: #9ec9ff;
+    }
+  }
+  :global(.ant-btn-primary) {
+    color: #fff;
+    background: #1677ff;
+    border-color: #1677ff;
+    &:hover:not(:disabled) {
+      color: #fff;
+      background: #4096ff;
+      border-color: #4096ff;
+    }
+    &:disabled {
+      color: #a9b7ca;
+      background: #243247;
+      border-color: #42536b;
+    }
+  }
+  :global(.ant-input-affix-wrapper) {
+    width: 100%;
+    color: #f4f7fb;
+    background: #1c2939;
+    border-color: #ffffff40;
+    &:hover,
+    &:focus-within {
+      border-color: #9ec9ff;
+    }
+    :global(.ant-input) {
+      color: #f4f7fb;
+      background: transparent;
+      &::placeholder {
+        color: #a9b7ca;
+      }
+    }
+    :global(.ant-input-password-icon) {
+      color: #a9b7ca;
+      &:hover {
+        color: #f4f7fb;
+      }
+    }
   }
 }
 .stageIcon {
   display: grid;
-  width: 62px;
-  height: 62px;
-  margin: 0 auto 22px;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
   color: #9ec9ff;
-  font-size: 30px;
-  background: #ffffff06;
-  border: 1px solid #ffffff20;
-  border-radius: 18px;
-  box-shadow: 0 10px 35px #00000012;
+  font-size: 24px;
+  background: #1c2939;
+  border: 1px solid #ffffff26;
+  border-radius: 12px;
   place-items: center;
 }
 .authForm {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  max-width: 360px;
-  margin: 24px auto 0;
-  :global(.ant-input-affix-wrapper) {
-    flex: 1;
-    min-width: 180px;
-  }
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  margin-top: 24px;
 }
-
-.monitor {
+.stageActions {
   display: flex;
   gap: 12px;
   align-items: center;
-  color: var(--wc-muted);
-  font-size: 12px;
-  .select {
-    flex: 1;
-    min-width: 0;
-  }
+  justify-content: center;
+  margin-top: 24px;
 }
-.select {
-  padding: 7px 9px;
-  color: var(--wc-text);
-  font-size: 12px;
-  background: var(--wc-bg);
-  border: 1px solid var(--wc-border);
-  border-radius: 8px;
-}
-.panelHint {
-  display: block;
-  margin: 0 0 14px;
-  color: var(--wc-muted);
-  font-size: 12px;
-  line-height: 1.8;
+.authForm .stageActions {
+  margin-top: 0;
 }
 .sessionHud {
   position: absolute;
@@ -480,22 +516,25 @@
   z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   align-items: flex-start;
   max-width: 220px;
 }
-.sessionIdentity {
+.sessionIdentity,
+.noticeButton {
   display: inline-flex;
   gap: 8px;
   align-items: center;
   min-width: 0;
-  height: 25px;
-  padding: 0 7px;
-  color: #c8d3e3;
-  font-size: 11px;
-  background: #1c2939dc;
-  border: 1px solid #ffffff1c;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid #ffffff26;
   border-radius: 8px;
+}
+.sessionIdentity {
+  color: #c8d3e3;
+  font-size: 12px;
+  background: #1c2939dc;
   > span:nth-child(2) {
     max-width: 150px;
     overflow: hidden;
@@ -504,21 +543,20 @@
   }
 }
 .noticeButton {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  height: 25px;
-  padding: 0 7px;
   color: #ffda91;
-  font-size: 11px !important;
+  font-size: 12px;
   background: #3b3324f2;
-  border: 1px solid #f2bd564d;
-  border-radius: 8px;
+  border-color: #f2bd564d;
   cursor: pointer;
   &[data-error='true'] {
     color: #ffb8b0;
     background: #452b2bf2;
     border-color: #ff888844;
+  }
+  &[data-info='true'] {
+    color: #bedaff;
+    background: #223853f2;
+    border-color: #8ebfff55;
   }
   &:hover,
   &[aria-expanded='true'] {
@@ -534,16 +572,15 @@
   }
   &[data-session='true'] {
     position: absolute;
-    top: 102px;
+    top: 148px;
     left: 12px;
     z-index: 30;
     width: 420px;
     max-width: calc(100% - 24px);
-    max-height: calc(100% - 80px);
+    max-height: calc(100% - 160px);
     margin: 0;
-    padding: 10px;
+    padding: 12px;
     overflow: auto;
-    color: var(--wc-text);
     background: var(--wc-bg);
     border: 1px solid var(--wc-border);
     border-radius: 12px;
@@ -551,37 +588,215 @@
     animation: contentEnter 140ms ease-out;
   }
   :global(.ant-alert) {
-    font-size: 12px;
+    font-size: 14px;
   }
+}
+.pasteHint,
+.panelHint,
+.touchHelp {
+  color: var(--wc-muted);
+  font-size: 12px;
+  line-height: 1.7;
 }
 .pasteHint {
   display: flex;
   gap: 8px;
   align-items: center;
   padding: 8px;
-  color: var(--wc-muted);
-  font-size: 12px;
-  line-height: 1.7;
 }
+.panelHint {
+  display: block;
+  margin: 0 0 16px;
+}
+.touchHelp {
+  summary {
+    cursor: pointer;
+  }
+  p {
+    margin: 8px 0 0;
+  }
+}
+/* 32px纯图标菜单与36px表单控件是明确的两个密度等级。 */
+.topToolbar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 35;
+  width: max-content;
+  max-width: calc(100% - 12px);
+  color: var(--wc-text);
+  transform: translateX(-50%);
+}
+.toolbarHandle {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 28px;
+  margin: 0 auto;
+  padding: 0;
+  color: #c7d3e3;
+  font-size: 12px;
+  background: #233144ed;
+  border: 1px solid #ffffff26;
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  cursor: pointer;
+  &:hover {
+    background: #374b65;
+  }
+}
+.toolbarShell {
+  margin-top: 4px;
+  animation: menuEnter 160ms ease-out;
+}
+.toolbarButtons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px;
+  background: var(--wc-bg);
+  border: 1px solid var(--wc-border);
+  border-radius: 10px;
+  box-shadow: 0 4px 24px #0004;
+  > button {
+    position: relative;
+    display: grid;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--wc-muted);
+    font-size: 16px;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 140ms, color 140ms;
+    place-items: center;
+    &:hover:not(:disabled) {
+      color: var(--wc-text);
+      background: var(--wc-soft);
+    }
+    &[aria-pressed='true'] {
+      color: var(--wc-accent);
+      background: var(--wc-accent-bg);
+    }
+    &:disabled {
+      opacity: 0.45;
+    }
+  }
+  .toolbarDisconnect {
+    margin-left: 4px;
+    color: #e06363;
+    &:hover {
+      color: #ce4242;
+      background: #e0636315;
+    }
+  }
+}
+.toolbarSeparator {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--wc-border);
+}
+.toolbarActivity {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  background: var(--wc-accent);
+  border-radius: 50%;
+}
+.toolbarHandle .toolbarActivity {
+  position: static;
+}
+.toolbarPopover {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 360px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 100px);
+  margin-top: 8px;
+  padding: 16px;
+  overflow: auto;
+  background: var(--wc-bg);
+  border: 1px solid var(--wc-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px #0004;
+  transform: translateX(-50%);
+  animation: contentEnter 140ms ease-out;
+  overscroll-behavior: contain;
+  h3 {
+    margin: 0 0 16px;
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 24px;
+  }
+}
+.monitor,
+.menuRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 4px 0;
+  font-size: 14px;
+  .select {
+    width: 148px;
+    min-width: 0;
+  }
+}
+.monitor {
+  margin-bottom: 12px;
+}
+.select {
+  height: 36px;
+  padding: 0 8px;
+  color: var(--wc-text);
+  font-size: 14px;
+  background: var(--wc-bg);
+  border: 1px solid var(--wc-border);
+  border-radius: 8px;
+}
+.menuSegments,
+.menuActions,
 .inputControls {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 18px;
+}
+.menuSegments {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  :global(.ant-btn) {
+    flex: 1;
+  }
+}
+.menuSegments :global(.ant-btn)[aria-pressed='true'],
+.inputControls button[aria-pressed='true'] {
+  color: var(--wc-accent);
+  background: var(--wc-accent-bg);
+  border-color: var(--wc-accent);
+}
+.menuActions {
+  margin: 16px 0;
+}
+.inputControls {
+  margin-bottom: 16px;
   > label {
     display: grid;
     gap: 8px;
     width: 100%;
-    margin: 2px 0 8px;
-    font-size: 12px;
-  }
-  .select {
-    max-width: none;
-  }
-  button[aria-pressed='true'] {
-    color: var(--wc-accent);
-    background: var(--wc-accent-bg, #eef5ff);
-    border-color: var(--wc-accent);
+    margin-bottom: 8px;
+    font-size: 14px;
   }
 }
 .keyboardText {
@@ -589,19 +804,19 @@
   margin-top: 8px;
 }
 .audioHero {
-  margin-bottom: 10px;
+  margin-bottom: 16px;
   > :global(.anticon) {
-    margin-right: 7px;
+    margin-right: 8px;
     color: var(--wc-accent);
   }
   strong {
-    font-size: 13px;
+    font-size: 14px;
   }
   p {
-    margin: 8px 0;
+    margin: 8px 0 0;
     color: var(--wc-muted);
     font-size: 12px;
-    line-height: 1.6;
+    line-height: 1.7;
   }
 }
 .audioControls {
@@ -617,401 +832,19 @@
     font-size: 12px;
   }
 }
-.featureCard {
-  min-width: 0;
-}
-.fileState {
-  padding: 3px 7px;
-  color: var(--wc-muted);
-  font-size: 11px;
-  background: var(--wc-soft);
-  border-radius: 6px;
-}
-.uploadField {
-  position: relative;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: center;
-  min-height: 42px;
-  padding: 10px;
-  color: var(--wc-accent);
-  font-size: 12px;
-  background: var(--wc-soft);
-  border: 1px dashed var(--wc-border);
-  border-radius: 9px;
-  cursor: pointer;
-  input {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    cursor: pointer;
-    opacity: 0;
-    inset: 0;
-  }
-  &:focus-within {
-    outline: 2px solid var(--wc-accent);
-    outline-offset: 2px;
-  }
-  &:has(input:disabled) {
-    cursor: not-allowed;
-    opacity: 0.45;
-  }
-}
-.fileList {
-  max-height: 300px;
-  overflow: auto;
-  border: 1px solid var(--wc-border);
-  border-radius: 9px;
-  ul {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-  li + li {
-    border-top: 1px solid var(--wc-border);
-  }
-}
-.fileRow {
-  display: flex;
-  gap: 9px;
-  align-items: center;
-  width: 100%;
-  padding: 11px 10px;
-  color: var(--wc-text);
-  text-align: left;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  transition: background-color 150ms;
-  > :global(.anticon) {
-    flex-shrink: 0;
-    color: var(--wc-accent);
-  }
-  &:hover:not(:disabled) {
-    background: var(--wc-soft);
-  }
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-}
-.fileName {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  font-size: 12px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.fileSize {
-  color: var(--wc-muted);
-  font-size: 10px;
-  white-space: nowrap;
-}
-.emptyFiles {
+.connectionInfo {
   display: grid;
-  gap: 10px;
-  padding: 30px 10px;
-  color: var(--wc-muted);
-  font-size: 12px;
-  text-align: center;
-  > :global(.anticon) {
-    justify-self: center;
-    font-size: 25px;
-    opacity: 0.5;
-  }
-}
-.transferProgress {
-  padding: 12px;
-  font-size: 12px;
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-  background: var(--wc-soft);
-  border: 1px solid var(--wc-border);
-  border-radius: 9px;
-  progress {
-    display: block;
-    width: 100%;
-    height: 6px;
-    margin-top: 10px;
-    accent-color: var(--wc-accent);
-  }
-}
-@keyframes panelEnter {
-  from {
-    transform: translateX(8px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-@keyframes contentEnter {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@media (max-width: 1100px) {
-  .deviceSelection {
-    grid-template-columns: 280px minmax(0, 1fr);
-    gap: 18px;
-  }
-  .connectionCard,
-  .devices {
-    padding: 20px;
-  }
-  .deviceGrid {
-    gap: 10px;
-  }
-  .deviceCard {
-    gap: 9px;
-    padding-left: 11px;
-  }
-}
-@media (max-width: 760px) {
-  .deviceSelection {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
-  }
-  .connectionCard,
-  .devices {
-    padding: 20px;
-    border-radius: 13px;
-  }
-  .connectionField {
-    margin-top: 18px;
-  }
-  .connectionHint {
-    margin-top: 14px;
-  }
-  .header {
-    padding-bottom: 18px;
-  }
-  .devicesHeading {
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-  .deviceGrid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .deviceCard {
-    min-height: 99px;
-    padding: 15px;
-  }
-  .sessionHud {
-    top: 6px;
-    left: 6px;
-    max-width: 110px;
-  }
-  .sessionIdentity > span:nth-child(2) {
-    max-width: 92px;
-  }
-  .noticeButton {
-    font-size: 10px !important;
-  }
-  .notices[data-session='true'] {
-    top: 89px;
-    left: 8px;
-    max-width: calc(100% - 16px);
-    max-height: calc(100% - 100px);
-  }
-  .deviceActions {
-    gap: 5px;
-  }
-  .devices h2 {
-    font-size: 15px;
-  }
-  .deviceCount {
-    display: none;
-  }
-}
-@media (max-height: 540px) {
-  .panelHeader {
-    padding-top: 12px;
-    padding-bottom: 10px;
-  }
-  .panelMode {
-    margin-bottom: 10px;
-  }
-  .toolNav {
-    padding-bottom: 8px;
-  }
-  .toolButton {
-    gap: 4px;
-    min-height: 49px;
-    padding: 6px 2px;
-  }
-  .panelFooter {
-    padding-top: 9px;
-    padding-bottom: 9px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .workbench *,
-  .workbench *::before,
-  .workbench *::after {
-    transition: none !important;
-    animation: none !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-.noticeButton[data-info='true'] {
-  color: #bedaff;
-  background: #223853f2;
-  border-color: #8ebfff55;
-}
-
-/* 顶部菜单只覆盖画面，不参与桌面布局或坐标变换。 */
-.topToolbar {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  z-index: 35;
-  width: max-content;
-  max-width: calc(100% - 12px);
-  color: var(--wc-text);
-  transform: translateX(-50%);
-}
-.toolbarHandle {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: center;
-  width: 64px;
-  height: 20px;
-  margin: 0 auto;
-  padding: 0;
-  color: #c7d3e3;
-  font-size: 10px !important;
-  background: #233144ed;
-  border: 1px solid #ffffff24;
-  border-top: 0;
-  border-radius: 0 0 8px 8px;
-  cursor: pointer;
-  transition: background-color 150ms;
-  &:hover {
-    background: #374b65;
-  }
-}
-.toolbarShell {
-  margin-top: 4px;
-  animation: menuEnter 160ms ease-out;
-}
-.toolbarButtons {
-  display: flex;
-  gap: 3px;
-  align-items: center;
-  padding: 5px;
-  background: var(--wc-bg);
-  border: 1px solid var(--wc-border);
-  border-radius: 10px;
-  box-shadow: 0 4px 24px #0004;
-  > button {
-    position: relative;
-    display: grid;
-    width: 34px;
-    height: 32px;
-    padding: 0;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  margin: 0 0 16px;
+  font-size: 14px;
+  dt {
     color: var(--wc-muted);
-    font-size: 17px !important;
-    background: transparent;
-    border: 0;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 140ms, color 140ms;
-    place-items: center;
-    &:hover:not(:disabled) {
-      color: var(--wc-text);
-      background: var(--wc-soft);
-    }
-    &[aria-pressed='true'] {
-      color: var(--wc-accent);
-      background: var(--wc-accent-bg);
-    }
-    &:disabled {
-      opacity: 0.35;
-    }
   }
-  .toolbarDisconnect {
-    margin-left: 3px;
-    color: #e06363;
-    &:hover {
-      color: #ce4242;
-      background: #e0636315;
-    }
-  }
-}
-.toolbarSeparator {
-  width: 1px;
-  height: 18px;
-  margin: 0 3px;
-  background: var(--wc-border);
-}
-.toolbarActivity {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 5px;
-  height: 5px;
-  background: var(--wc-accent);
-  border-radius: 50%;
-}
-.toolbarHandle .toolbarActivity {
-  position: static;
-}
-.toolbarPopover {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  width: 340px;
-  max-width: calc(100vw - 16px);
-  max-height: calc(100dvh - 85px);
-  margin-top: 6px;
-  padding: 16px;
-  overflow: auto;
-  background: var(--wc-bg);
-  border: 1px solid var(--wc-border);
-  border-radius: 10px;
-  box-shadow: 0 8px 28px #0004;
-  transform: translateX(-50%);
-  animation: contentEnter 140ms ease-out;
-  overscroll-behavior: contain;
-  h3 {
-    margin: 0 0 12px;
-    font-weight: 600;
-    font-size: 13px;
-  }
-  .monitor {
-    margin-bottom: 12px;
-  }
-  .inputControls {
-    gap: 6px;
-    margin-bottom: 10px;
-    > label {
-      gap: 5px;
-      margin: 0 0 8px;
-    }
-  }
-  :global(.ant-btn) {
-    font-size: 12px;
-  }
-}
-.touchHelp {
-  color: var(--wc-muted);
-  font-size: 12px;
-  summary {
-    cursor: pointer;
-  }
-  p {
-    margin: 8px 0 0;
+  dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
   }
 }
 .legacyNotice {
@@ -1022,15 +855,16 @@
 }
 .legacyTrigger {
   display: inline-flex;
-  gap: 5px;
+  gap: 8px;
   align-items: center;
-  padding: 3px 6px;
+  min-height: 28px;
+  padding: 0 8px;
   color: #ffda91;
-  font-size: 10px !important;
-  line-height: 16px;
+  font-size: 12px;
+  line-height: 20px;
   background: #3b3324e8;
   border: 1px solid #f2bd5640;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
   &:hover,
   &[aria-expanded='true'] {
@@ -1039,34 +873,38 @@
 }
 .legacyPopover {
   position: absolute;
-  top: calc(100% + 5px);
+  top: calc(100% + 8px);
   left: 0;
   z-index: 45;
   width: 360px;
   max-width: calc(100vw - 24px);
   max-height: calc(100dvh - 120px);
-  padding: 15px;
+  padding: 16px;
   overflow: auto;
   color: var(--wc-text);
-  font-size: 12px;
-  line-height: 1.75;
+  font-size: 14px;
+  line-height: 1.7;
   background: var(--wc-bg);
   border: 1px solid var(--wc-warning-border, #ffe58f);
-  border-radius: 9px;
+  border-radius: 10px;
   box-shadow: 0 8px 30px #0004;
-  p {
-    margin: 9px 0;
+  strong {
+    font-size: 14px;
   }
-  small {
-    display: block;
-    color: var(--wc-muted);
-    font-size: 10px;
+  p {
+    margin: 12px 0 0;
   }
 }
 .legacyVersion {
-  margin-top: 6px;
+  margin-top: 8px;
   color: var(--wc-muted);
+  font-size: 12px;
 }
+.legacyCompatibility {
+  color: var(--wc-muted);
+  font-size: 12px;
+}
+/* 表头在滚动区域外，两栏只滚动各自条目。 */
 .fileDialog {
   position: absolute;
   top: 50%;
@@ -1082,18 +920,16 @@
   color: var(--wc-text);
   background: var(--wc-bg);
   border: 1px solid var(--wc-border);
-  border-radius: 11px;
+  border-radius: 12px;
   box-shadow: 0 14px 60px #0006;
-  transform: translate(
-    calc(-50% + var(--file-x, 0px)),
-    calc(-50% + var(--file-y, 0px))
-  );
+  transform: translate(calc(-50% + var(--file-x, 0px)), calc(-50% + var(--file-y, 0px)));
 }
 .fileDialogHeader {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  min-height: 42px;
+  min-height: 48px;
   padding: 0 12px 0 16px;
   background: var(--wc-soft);
   border-bottom: 1px solid var(--wc-border);
@@ -1106,21 +942,22 @@
     align-items: center;
     min-width: 0;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
   }
   small {
     color: var(--wc-muted);
     font-weight: 400;
-    font-size: 11px;
+    font-size: 12px;
   }
   button {
     display: grid;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
     color: var(--wc-muted);
     background: transparent;
     border: 0;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     place-items: center;
     &:hover {
@@ -1130,142 +967,366 @@
 }
 .fileDialogBody {
   min-height: 0;
-  padding: 14px;
+  padding: 16px;
   overflow: auto;
   overscroll-behavior: contain;
 }
 .fileSessionBar {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  margin-bottom: 12px;
-  :global(.ant-btn) {
-    font-size: 12px;
+  margin-bottom: 16px;
+  .legacyNotice {
+    position: static;
+  }
+  .legacyPopover {
+    max-width: 100%;
+  }
+}
+.fileState {
+  color: var(--wc-muted);
+  font-size: 12px;
+}
+.fileAuthentication {
+  margin-bottom: 16px;
+  padding: 12px;
+  font-size: 14px;
+  background: var(--wc-soft);
+  border: 1px solid var(--wc-border);
+  border-radius: 8px;
+  > span {
+    margin-right: 12px;
   }
 }
 .fileAuth {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+.fileAuthActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+.filePanes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.filePane {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--wc-border);
+  border-radius: 8px;
+}
+.filePaneHeading {
   display: flex;
   gap: 8px;
-  margin: 12px 0;
+  align-items: center;
+  height: 52px;
+  padding: 8px 12px;
+  background: var(--wc-soft);
+  strong {
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  > span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--wc-muted);
+    font-size: 12px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
 }
 .fileNavigation {
   display: flex;
-  gap: 6px;
-  margin: 12px 0;
+  gap: 8px;
+  margin: 12px;
   :global(.ant-input) {
-    min-width: 60px;
-    font-size: 12px;
+    min-width: 40px;
   }
-}
-.fileList {
-  min-height: 150px;
-  max-height: min(38dvh, 360px);
-  border-radius: 6px;
+  :global(.ant-btn) {
+    flex-shrink: 0;
+    padding: 0 10px;
+  }
+  :global(.ant-btn-icon-only) {
+    width: 36px;
+    padding: 0;
+  }
 }
 .fileColumns,
 .fileRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 90px 88px;
+  grid-template-columns: minmax(0, 1fr) 72px;
   gap: 12px;
   align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
 }
 .fileColumns {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  padding: 7px 10px;
   color: var(--wc-muted);
-  font-size: 11px;
+  font-size: 12px;
   background: var(--wc-soft);
+  border-top: 1px solid var(--wc-border);
   border-bottom: 1px solid var(--wc-border);
   > :last-child {
     text-align: right;
   }
 }
+.fileList {
+  height: min(30dvh, 300px);
+  min-height: 180px;
+  overflow: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  li + li {
+    border-top: 1px solid var(--wc-border);
+  }
+}
+.filePicker:has(.fileFallback[open]) .fileList {
+  height: clamp(120px, calc(100dvh - 640px), 260px);
+  min-height: 120px;
+}
 .fileRow {
-  padding: 8px 10px;
-  font-size: 12px !important;
+  width: 100%;
+  color: var(--wc-text);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: background-color 140ms;
+  &:hover:not(:disabled) {
+    background: var(--wc-soft);
+  }
   &[aria-pressed='true'] {
     background: var(--wc-accent-bg);
     box-shadow: inset 2px 0 var(--wc-accent);
   }
+  &:focus-visible {
+    outline-offset: -2px;
+  }
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 }
 .fileName {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  > :global(.anticon) {
+    flex-shrink: 0;
+    color: var(--wc-accent);
+    font-size: 16px;
+  }
+  > span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+.fileSize {
+  color: var(--wc-muted);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.emptyFiles {
+  display: grid;
+  gap: 12px;
+  min-height: 100%;
+  padding: 24px 16px;
+  color: var(--wc-muted);
+  font-size: 14px;
+  line-height: 1.7;
+  text-align: center;
+  align-content: center;
+  > :global(.anticon) {
+    justify-self: center;
+    font-size: 24px;
+    opacity: 0.5;
+  }
+}
+.filePaneFooter {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--wc-border);
+  > span {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--wc-muted);
+    font-size: 12px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+.fileDirections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-self: center;
+  :global(.ant-btn) {
+    width: 36px;
+    padding: 0;
+  }
+}
+.fileFallback {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--wc-soft);
+  border: 1px solid var(--wc-border);
+  border-radius: 8px;
+  summary {
+    width: max-content;
+    max-width: 100%;
+    color: var(--wc-text);
+    font-size: 14px;
+    line-height: 24px;
+    cursor: pointer;
+    &:focus-visible {
+      outline: 2px solid var(--wc-accent);
+      outline-offset: 2px;
+    }
+  }
+}
+.fileFallbackActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--wc-border);
+}
+.fileFallbackOption {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  min-width: 0;
+  small {
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--wc-muted);
+    font-size: 12px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+.uploadField {
+  position: relative;
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  :global(.anticon) {
-    flex-shrink: 0;
-    color: var(--wc-accent);
-    font-size: 15px;
-  }
-}
-.fileType {
-  color: var(--wc-muted);
-  font-size: 11px;
-}
-.fileSize {
-  font-size: 11px;
-  text-align: right;
-}
-.fileActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
-  margin-top: 12px;
-  :global(.ant-btn) {
-    font-size: 12px;
-  }
-}
-.fileSelection {
-  flex: 1;
-  min-width: 90px;
-  overflow: hidden;
-  color: var(--wc-muted);
-  font-size: 12px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.fileActions .uploadField {
-  min-height: 32px;
-  padding: 5px 10px;
+  justify-content: center;
+  height: 36px;
+  padding: 0 12px;
+  color: var(--wc-accent);
+  font-size: 14px;
+  line-height: 1;
   background: var(--wc-bg);
   border: 1px solid var(--wc-border);
   border-radius: 8px;
+  cursor: pointer;
+  input {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    opacity: 0;
+    inset: 0;
+  }
+  &:hover:not(:has(input:disabled)) {
+    border-color: var(--wc-accent);
+  }
+  &:focus-within {
+    outline: 2px solid var(--wc-accent);
+    outline-offset: 2px;
+  }
+  &:has(input:disabled) {
+    color: var(--wc-muted);
+    cursor: not-allowed;
+    input {
+      cursor: not-allowed;
+    }
+  }
 }
+.fileStatusBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 12px;
+  color: var(--wc-muted);
+  font-size: 12px;
+  border-top: 1px solid var(--wc-border);
+  progress {
+    flex: 1;
+    min-width: 90px;
+    height: 6px;
+    accent-color: var(--wc-accent);
+  }
+  small {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+}
+.fileProgressName {
+  max-width: 34%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.localFileError,
 .fileLimit {
   display: block;
-  margin-top: 9px;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.localFileError {
+  color: var(--wc-warning-text, #d4380d);
+}
+.fileLimit {
   color: var(--wc-muted);
-  font-size: 10px;
 }
 .filePicker > :global(.ant-alert) {
-  margin-bottom: 12px;
-  font-size: 12px;
-}
-.filePicker .transferProgress {
-  margin-top: 12px;
-  padding: 8px 10px;
-  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
 }
 .filePicker > :global(.ant-space) {
-  margin-top: 10px;
+  margin-top: 12px;
+  font-size: 14px;
 }
 .clipboardRetry {
   position: absolute;
-  bottom: 14px;
+  bottom: 16px;
   left: 50%;
   z-index: 30;
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
   max-width: calc(100% - 24px);
-  padding: 8px 12px;
+  padding: 12px 16px;
   color: var(--wc-text);
-  font-size: 12px;
+  font-size: 14px;
   background: var(--wc-bg);
   border: 1px solid var(--wc-border);
   border-radius: 8px;
@@ -1282,323 +1343,145 @@
 }
 .exitFullscreen {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 12px;
+  right: 12px;
 }
-@keyframes menuEnter {
-  from {
-    transform: translateY(-4px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-@media (max-width: 760px) {
-  .sessionHud {
-    max-width: 100px;
-    .sessionIdentity {
-      gap: 4px;
-      font-size: 10px;
-    }
-  }
-  .legacyPopover {
-    width: 330px;
-  }
-  .fileDialog {
-    max-width: calc(100% - 12px);
-    max-height: calc(100% - 90px);
-    border-radius: 8px;
-  }
-  .fileDialogBody {
-    padding: 10px;
-  }
-  .fileColumns,
-  .fileRow {
-    grid-template-columns: minmax(0, 1fr) 54px 62px;
-    gap: 6px;
-  }
-  .fileActions {
-    .fileSelection {
-      flex-basis: 100%;
-      width: 100%;
-    }
-  }
-  .fileNavigation {
-    gap: 4px;
-    :global(.ant-btn) {
-      padding: 0 8px;
-    }
-  }
-}
-@media (max-width: 460px) {
-  .toolbarButtons {
-    gap: 1px;
-    padding: 4px;
-    > button {
-      width: 30px;
-      height: 30px;
-    }
-  }
-  .toolbarSeparator {
-    margin: 0 2px;
-  }
-}
-
-.filePicker,
 .fileDialogBody,
 .fileList,
-.toolbarPopover {
+.toolbarPopover,
+.legacyPopover,
+.notices {
   scrollbar-width: thin;
   scrollbar-color: var(--wc-border) var(--wc-bg);
 }
-.fileFallback {
-  width: 100%;
-  color: var(--wc-muted);
-  summary {
-    width: max-content;
-    max-width: 100%;
-    font-size: 11px;
-    cursor: pointer;
-    &:focus-visible {
-      outline: 2px solid var(--wc-accent);
-      outline-offset: 2px;
-    }
+@keyframes contentEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes menuEnter {
+  from { transform: translateY(-4px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@media (max-width: 1100px) {
+  .deviceSelection {
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 16px;
+  }
+  .connectionCard,
+  .devices {
+    padding: 20px;
   }
 }
-.fileFallbackActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  margin-top: 6px;
-}
-
-/* 双栏文件窗口保持独立浮层；窄屏改为上下两栏。 */
-.filePanes {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr);
-  gap: 10px;
-}
-.filePane {
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--wc-border);
-  border-radius: 8px;
-}
-.filePaneHeading {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  min-height: 42px;
-  padding: 8px 10px;
-  font-size: 12px;
-  background: var(--wc-soft);
-  > span {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    color: var(--wc-muted);
-    font-size: 11px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+@media (max-width: 760px) {
+  .deviceSelection {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
   }
-  :global(.ant-btn) {
-    font-size: 11px;
+  .connectionCard,
+  .devices {
+    padding: 20px;
   }
-}
-.filePane .fileNavigation {
-  gap: 4px;
-  margin: 8px;
-  :global(.ant-btn) {
-    padding: 0 8px;
+  .connectionField {
+    margin-top: 16px;
   }
-}
-.filePane .fileList {
-  height: min(32dvh, 330px);
-  min-height: 200px;
-  overflow: auto;
-  border: 0;
-  border-top: 1px solid var(--wc-border);
-  border-bottom: 1px solid var(--wc-border);
-  border-radius: 0;
-}
-.filePane .fileColumns,
-.filePane .fileRow {
-  grid-template-columns: minmax(0, 1fr) 70px;
-  gap: 8px;
-}
-.filePaneFooter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  min-height: 44px;
-  padding: 8px;
-  > span {
-    flex: 1 1 100%;
-    min-width: 0;
-    overflow: hidden;
-    color: var(--wc-muted);
-    font-size: 11px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+  .connectionHint {
+    margin-top: 16px;
   }
-  :global(.ant-btn),
-  .uploadField {
-    font-size: 11px;
+  .devicesHeading {
+    gap: 8px;
+    margin-bottom: 16px;
   }
-  .uploadField {
-    min-height: 28px;
-    padding: 3px 8px;
-    background: var(--wc-bg);
-    border: 1px solid var(--wc-border);
-    border-radius: 6px;
+  .deviceGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
-}
-.fileDirections {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  justify-content: center;
-  :global(.ant-btn) {
-    padding: 0;
+  .deviceCard {
+    min-height: 104px;
+    padding: 16px;
   }
-}
-.fileStatusBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  margin-top: 12px;
-  padding: 8px 2px 0;
-  color: var(--wc-muted);
-  font-size: 11px;
-  border-top: 1px solid var(--wc-border);
-  progress {
-    flex: 1;
-    min-width: 90px;
-    height: 5px;
-    accent-color: var(--wc-accent);
+  .sessionHud {
+    top: 8px;
+    left: 8px;
+    max-width: 150px;
   }
-  small {
-    white-space: nowrap;
+  .sessionIdentity > span:nth-child(2) {
+    max-width: 104px;
   }
-  .fileProgressName {
-    max-width: 34%;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+  .notices[data-session='true'] {
+    left: 8px;
+    max-width: calc(100% - 16px);
   }
-}
-.localFileError {
-  display: block;
-  padding: 8px;
-  color: #d4380d;
-  font-size: 11px;
-}
-.fileAuthentication {
-  margin-bottom: 12px;
-  padding: 10px;
-  font-size: 12px;
-  background: var(--wc-soft);
-  border: 1px solid var(--wc-border);
-  border-radius: 8px;
-}
-.fileAuthentication .fileAuth {
-  margin: 8px 0 0;
+  .deviceCount {
+    display: none;
+  }
+  .fileDialog {
+    max-width: calc(100% - 16px);
+    max-height: calc(100% - 100px);
+    border-radius: 8px;
+  }
+  .fileDialogBody {
+    padding: 12px;
+  }
 }
 @media (max-width: 680px) {
   .filePanes {
     grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
+    gap: 12px;
   }
   .fileDirections {
     flex-direction: row;
+    justify-content: center;
     :global(.ant-btn) {
-      min-width: 100px;
+      width: 100px;
       :global(.anticon) {
         transform: rotate(90deg);
       }
     }
   }
-  .filePane .fileList {
+  .fileList {
     height: 140px;
-    min-height: 110px;
-    .emptyFiles {
-      gap: 6px;
-      padding: 16px 10px;
+    min-height: 140px;
+  }
+  .filePicker:has(.fileFallback[open]) .fileList {
+    height: 140px;
+    min-height: 140px;
+  }
+  .fileNavigation {
+    gap: 8px;
+    margin: 12px 8px;
+    :global(.ant-btn) {
+      padding: 0 8px;
+    }
+    :global(.ant-btn-icon-only) {
+      padding: 0;
     }
   }
-  .fileAuthentication .fileAuth {
-    flex-wrap: wrap;
-    :global(.ant-input-affix-wrapper) {
-      flex-basis: 100%;
-    }
+  .fileFallbackActions {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .fileStatusBar .fileProgressName {
+  .fileProgressName {
     max-width: 100%;
   }
 }
-
-.menuRow {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 38px;
-  padding: 6px 0;
-  color: var(--wc-text);
-  font-size: 12px;
-  .select {
-    min-width: 116px;
-    max-width: 170px;
-    height: 30px;
-    padding: 3px 8px;
+@media (max-width: 460px) {
+  .toolbarButtons {
+    gap: 2px;
+  }
+  .toolbarSeparator {
+    margin: 0 2px;
+  }
+  .stageOverlay {
+    padding: 24px;
+  }
+  .stageCard h2 {
+    font-size: 24px;
   }
 }
-.menuSegments {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
-  padding: 0;
-  border: 0;
-  :global(.ant-btn) {
-    flex: 1;
-  }
-  :global(.ant-btn)[aria-pressed='true'] {
-    color: var(--wc-accent);
-    background: var(--wc-accent-bg);
-    border-color: var(--wc-accent);
-  }
-}
-.menuActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 10px 0;
-}
-.connectionInfo {
-  display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 10px;
-  margin: 0 0 14px;
-  font-size: 12px;
-  dt {
-    color: var(--wc-muted);
-  }
-  dd {
-    min-width: 0;
-    margin: 0;
-    overflow-wrap: anywhere;
-  }
-}
-.screen[data-view-style='original'] {
-  display: block;
-  overflow: auto;
-  canvas {
-    display: block;
-    margin: auto;
+@media (prefers-reduced-motion: reduce) {
+  .workbench *,
+  .workbench *::before,
+  .workbench *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
   }
 }

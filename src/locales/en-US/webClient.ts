@@ -57,7 +57,7 @@ export default {
   'webClient.retry': 'Retry',
   'webClient.fullscreen': 'Fullscreen',
   'webClient.password': 'Remote device password',
-  'webClient.authenticate': 'Send password',
+  'webClient.authenticate': 'Connect',
   'webClient.approval':
     'You can also approve the connection on the remote device.',
   'webClient.disabled': 'Web Client is disabled by the administrator.',
@@ -189,14 +189,14 @@ export default {
   'webClient.clipboardRetryHint': 'Browser blocked clipboard sync.',
   'webClient.clipboardRetry': 'Click to copy',
   'webClient.legacyFileBadge': 'File connection: legacy encryption',
-  'webClient.legacyTitle': 'About this encryption warning',
+  'webClient.legacyTitle': 'Legacy encryption',
   'webClient.remoteVersion': 'Remote client',
   'webClient.legacyRisk':
-    'This connection uses an older key exchange with a risk of key and nonce reuse across directions. This can weaken confidentiality; it does not mean the connection is unencrypted.',
+    'This connection is encrypted, but the older method has a known risk that can weaken the privacy of transferred content.',
   'webClient.legacyUpgrade':
-    'RustDesk 1.4.9 still uses this exchange. We verified a specific official 1.5.0 nightly build with the new exchange; a stable release containing this change has not been verified. Upgrade the remote client and reconnect; the negotiated exchange determines this warning.',
-  'webClient.legacyVerified':
-    'Verified 2026-09-30 · Windows nightly asset SHA-256 starts dc446869860d. Nightly is a development build; a version label alone is not proof.',
+    'Update RustDesk on the remote device, then reconnect.',
+  'webClient.legacyCompatibility':
+    'RustDesk 1.4.9 uses the older method. The new method has been verified in a specific official 1.5.0 nightly build. Nightly is a development build; the version number alone does not guarantee the change.',
   'webClient.cancelConnection': 'Cancel connection',
   'webClient.localFiles': 'Local files',
   'webClient.localChooseFolder': 'Choose folder',
@@ -242,6 +242,7 @@ export default {
   'webClient.newEncryption': 'New key exchange',
   'webClient.connectionRoute': 'Connection',
   'webClient.relayConnection': 'Encrypted relay',
-  'webClient.fileFallback': 'Other transfer methods',
+  'webClient.fileFallback': 'File upload and download',
   'webClient.fileUsePassword': 'Use password',
+  'webClient.fileUploadTarget': 'Remote folder',
 };

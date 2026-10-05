@@ -73,7 +73,7 @@ export function LegacyEncryptionNotice({
         )}
       </button>
       <div id={id} hidden={!open} className={styles.legacyPopover} role="note">
-        <strong>{text('legacyTitle', 'About this encryption warning')}</strong>
+        <strong>{text('legacyTitle', 'Legacy encryption')}</strong>
         {version && (
           <div className={styles.legacyVersion}>
             {text('remoteVersion', 'Remote client')}: {version}
@@ -82,21 +82,21 @@ export function LegacyEncryptionNotice({
         <p>
           {text(
             'legacyRisk',
-            'This connection uses an older key exchange with a risk of key and nonce reuse across directions. This can weaken confidentiality; it does not mean the connection is unencrypted.',
+            'This connection is encrypted, but the older method has a known risk that can weaken the privacy of transferred content.',
           )}
         </p>
         <p>
           {text(
             'legacyUpgrade',
-            'RustDesk 1.4.9 still uses this exchange. We verified a specific official 1.5.0 nightly build with the new exchange; a stable release containing this change has not been verified. Upgrade the remote client and reconnect; the negotiated exchange determines this warning.',
+            'Update RustDesk on the remote device, then reconnect.',
           )}
         </p>
-        <small>
+        <p className={styles.legacyCompatibility}>
           {text(
-            'legacyVerified',
-            'Verified 2026-09-30 · Windows nightly asset SHA-256 starts dc446869860d. Nightly is a development build; a version label alone is not proof.',
+            'legacyCompatibility',
+            'RustDesk 1.4.9 uses the older method. The new method has been verified in a specific official 1.5.0 nightly build. Nightly is a development build; the version number alone does not guarantee the change.',
           )}
-        </small>
+        </p>
       </div>
     </div>
   );

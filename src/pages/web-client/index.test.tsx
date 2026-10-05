@@ -512,11 +512,11 @@ test('legacy warning survives password submission and login without blocking eit
     kxVersion: 0,
     generation: worker.generation,
   });
-  expect(screen.getByText(legacyNotice)).toBeDefined();
+  expect(screen.getByRole('button', { name: legacyNotice })).toBeDefined();
   fireEvent.change(screen.getByLabelText('Remote device password'), {
     target: { value: 'synthetic' },
   });
-  fireEvent.click(screen.getByText('Send password'));
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
   expect(worker.postMessage).toHaveBeenLastCalledWith({
     displayGeneration: 0,
     type: 'password',
@@ -533,25 +533,27 @@ test('legacy warning survives password submission and login without blocking eit
     peer: { currentDisplay: 0, displays: [{ width: 1920, height: 1080 }] },
     generation: worker.generation,
   });
-  expect(screen.getByText(legacyNotice)).toBeDefined();
+  expect(screen.getByRole('button', { name: legacyNotice })).toBeDefined();
   const fullscreenSurface = screen
     .getByLabelText('Remote desktop. Focus to send keyboard and mouse input.')
     .closest('section');
-  expect(fullscreenSurface?.contains(screen.getByText(legacyNotice))).toBe(
-    true,
-  );
+  expect(
+    fullscreenSurface?.contains(
+      screen.getByRole('button', { name: legacyNotice }),
+    ),
+  ).toBe(true);
 });
 
 test('disconnect and reconnect suppress old legacy notices and KX 1 has no legacy notice', async () => {
   await start();
   const previous = worker.generation;
   worker.emit({ type: 'security', kxVersion: 0, generation: previous });
-  expect(screen.getByText(legacyNotice)).toBeDefined();
+  expect(screen.getByRole('button', { name: legacyNotice })).toBeDefined();
   fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
-  expect(screen.queryByText(legacyNotice)).toBeNull();
+  expect(screen.queryByRole('button', { name: legacyNotice })).toBeNull();
   fireEvent.click(screen.getByText('Connect'));
   worker.emit({ type: 'security', kxVersion: 0, generation: previous });
-  expect(screen.queryByText(legacyNotice)).toBeNull();
+  expect(screen.queryByRole('button', { name: legacyNotice })).toBeNull();
   worker.emit({
     type: 'security',
     kxVersion: 1,
@@ -562,7 +564,7 @@ test('disconnect and reconnect suppress old legacy notices and KX 1 has no legac
     state: 'connected',
     generation: worker.generation,
   });
-  expect(screen.queryByText(legacyNotice)).toBeNull();
+  expect(screen.queryByRole('button', { name: legacyNotice })).toBeNull();
 });
 
 test.each(['configuration', 'crash', 'failed'] as const)(
@@ -572,7 +574,7 @@ test.each(['configuration', 'crash', 'failed'] as const)(
     const previous = worker;
     const generation = worker.generation;
     worker.emit({ type: 'security', kxVersion: 0, generation });
-    expect(screen.getByText(legacyNotice)).toBeDefined();
+    expect(screen.getByRole('button', { name: legacyNotice })).toBeDefined();
     if (reason === 'configuration') {
       mockConfiguration = {
         ...profile,
@@ -582,7 +584,7 @@ test.each(['configuration', 'crash', 'failed'] as const)(
       previous.emit({ type: 'security', kxVersion: 0, generation });
     } else if (reason === 'crash') act(() => worker.onerror?.());
     else worker.emit({ type: 'state', state: 'failed', generation });
-    expect(screen.queryByText(legacyNotice)).toBeNull();
+    expect(screen.queryByRole('button', { name: legacyNotice })).toBeNull();
   },
 );
 
@@ -604,7 +606,7 @@ test('文件会话单独认证并拒绝断开后的目录事件', async () => {
   fireEvent.change(screen.getByLabelText('File session password'), {
     target: { value: 'file-only' },
   });
-  fireEvent.click(screen.getByText('Send password'));
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
   expect(worker.postMessage).toHaveBeenCalledWith(
     expect.objectContaining({
       type: 'files-password',
@@ -1024,7 +1026,7 @@ test('文件窗口隐藏后仍显示属于文件会话的旧协议与错误', as
   fireEvent.click(warning);
   expect(
     screen
-      .getAllByText(/RustDesk 1.4.9 still uses this exchange/)
+      .getAllByText(/RustDesk 1.4.9 uses the older method/)
       .some((e) => !e.closest('[hidden]')),
   ).toBe(true);
   expect(
@@ -1189,7 +1191,7 @@ test('Escape只关闭菜单，不劫持远端canvas的Escape', async () => {
   );
 });
 
-test('旧协议说明包含风险、已验证nightly与日期，不根据版本字符串隐藏', async () => {
+test('旧协议说明包含风险与nightly限制，不根据版本字符串隐藏或展示开发证据', async () => {
   await start();
   worker.emit({
     type: 'security',
@@ -1204,10 +1206,10 @@ test('旧协议说明包含风险、已验证nightly与日期，不根据版本�
   const badge = screen.getByRole('button', { name: 'Legacy encryption' });
   fireEvent.focus(badge);
   expect(
-    screen.getByText(/key and nonce reuse/).closest('[hidden]'),
+    screen.getByText(/known risk that can weaken/).closest('[hidden]'),
   ).toBeNull();
   expect(screen.getByText(/specific official 1.5.0 nightly/)).toBeTruthy();
-  expect(screen.getByText(/Verified 2026-09-30/)).toBeTruthy();
+  expect(screen.getByRole('note').textContent).not.toMatch(/SHA|Verified 2026/);
   expect(screen.getByText('Remote client: 1.5.0')).toBeTruthy();
 });
 
@@ -1512,15 +1514,15 @@ test('双栏授权目录按需上传并直接接收，重名确认与收起不�
     );
     expect(getFile).not.toHaveBeenCalled();
     const fallback = screen
-      .getByText('Other transfer methods')
+      .getByText('File upload and download')
       .closest('details');
     expect(fallback?.open).toBe(false);
-    fireEvent.click(screen.getByText('Other transfer methods'));
+    fireEvent.click(screen.getByText('File upload and download'));
     expect(fallback?.open).toBe(true);
     expect(
       screen.getByRole('button', { name: 'Download selected file' }),
     ).toBeTruthy();
-    fireEvent.click(screen.getByText('Other transfer methods'));
+    fireEvent.click(screen.getByText('File upload and download'));
     expect(fallback?.open).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'local.txt' }));
     fireEvent.click(
@@ -1608,4 +1610,92 @@ test('双栏授权目录按需上传并直接接收，重名确认与收起不�
   } finally {
     Reflect.deleteProperty(window, 'showDirectoryPicker');
   }
+});
+
+test('密码输入与统一动作组分开；取消与主操作同组且空密码不能发送', async () => {
+  const view = await start();
+  worker.emit({
+    type: 'state',
+    state: 'authenticating',
+    generation: worker.generation,
+  });
+  const password = screen.getByLabelText('Remote device password');
+  const actions = view.container.querySelector('[data-stage-actions]');
+  const connect = screen.getByRole('button', {
+    name: 'Connect',
+  }) as HTMLButtonElement;
+  const cancel = screen.getByRole('button', { name: 'Cancel connection' });
+  expect(actions?.contains(connect)).toBe(true);
+  expect(actions?.contains(cancel)).toBe(true);
+  expect(actions?.contains(password)).toBe(false);
+  expect(connect.disabled).toBe(true);
+  const count = worker.postMessage.mock.calls.length;
+  fireEvent.click(connect);
+  expect(worker.postMessage).toHaveBeenCalledTimes(count);
+  fireEvent.keyDown(password, { key: 'Enter', code: 'Enter' });
+  expect(worker.postMessage).toHaveBeenCalledTimes(count);
+  fireEvent.change(password, { target: { value: 'test-password' } });
+  expect(connect.disabled).toBe(false);
+  fireEvent.keyDown(password, { key: 'Enter', code: 'Enter' });
+  expect(worker.postMessage).toHaveBeenCalledTimes(count + 1);
+  expect(worker.postMessage).toHaveBeenLastCalledWith(
+    expect.objectContaining({ type: 'password', password: 'test-password' }),
+  );
+  expect((password as HTMLInputElement).value).toBe('');
+  expect(connect.disabled).toBe(true);
+  fireEvent.click(cancel);
+  expect(screen.queryByLabelText('Remote device password')).toBeNull();
+});
+
+test('文件表头固定在条目滚动区之外；普通传输在两栏外且目标仍使用已加载目录', async () => {
+  const view = await start();
+  openTool('File transfer');
+  const fileConnect = worker.postMessage.mock.calls.find(
+    ([m]) => m.type === 'files-connect',
+  )?.[0];
+  if (!fileConnect) throw new Error('Missing file connection');
+  const fileGeneration = fileConnect.fileGeneration;
+  worker.emit({
+    type: 'files-state',
+    state: 'connected',
+    generation: worker.generation,
+    fileGeneration,
+  });
+  worker.emit({
+    type: 'files-event',
+    generation: worker.generation,
+    fileGeneration,
+    event: {
+      type: 'directory',
+      path: 'C:/Loaded',
+      entries: [
+        {
+          name: 'report.txt',
+          path: 'C:/Loaded/report.txt',
+          size: 100,
+          directory: false,
+        },
+      ],
+    },
+  });
+  for (const pane of ['local', 'remote']) {
+    const header = view.container.querySelector(`[data-file-header="${pane}"]`);
+    const list = view.container.querySelector(`[data-file-list="${pane}"]`);
+    expect(header?.parentElement).toBe(list?.parentElement);
+    expect(list?.contains(header)).toBe(false);
+  }
+  const fallback = view.container.querySelector('[data-file-fallback]');
+  expect(fallback?.closest('[data-file-pane]')).toBeNull();
+  expect(fallback?.textContent).toContain('Remote folder: C:/Loaded');
+  fireEvent.change(screen.getByLabelText('Remote directory'), {
+    target: { value: 'C:/Unloaded' },
+  });
+  fireEvent.change(screen.getByLabelText('Upload to this folder'), {
+    target: { files: [new File(['x'], 'x.txt')] },
+  });
+  expect(worker.postMessage).toHaveBeenCalledWith(
+    expect.objectContaining({
+      command: expect.objectContaining({ type: 'upload', path: 'C:/Loaded' }),
+    }),
+  );
 });

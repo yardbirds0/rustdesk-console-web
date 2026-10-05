@@ -9,7 +9,7 @@ export default {
   'webClient.retry': 'Повторить',
   'webClient.fullscreen': 'Полный экран',
   'webClient.password': 'Пароль удалённого устройства',
-  'webClient.authenticate': 'Отправить пароль',
+  'webClient.authenticate': 'Подключить',
   'webClient.approval':
     'Можно также подтвердить подключение на удалённом устройстве.',
   'webClient.disabled': 'Веб-клиент отключён администратором.',
@@ -131,14 +131,14 @@ export default {
   'webClient.clipboardRetryHint': 'Browser blocked clipboard sync.',
   'webClient.clipboardRetry': 'Click to copy',
   'webClient.legacyFileBadge': 'File connection: legacy encryption',
-  'webClient.legacyTitle': 'About this encryption warning',
+  'webClient.legacyTitle': 'Старое шифрование',
   'webClient.remoteVersion': 'Remote client',
   'webClient.legacyRisk':
-    'This connection uses an older key exchange with a risk of key and nonce reuse across directions. This can weaken confidentiality; it does not mean the connection is unencrypted.',
+    'Соединение зашифровано, но старый метод имеет известный риск, который может снизить конфиденциальность передаваемых данных.',
   'webClient.legacyUpgrade':
-    'RustDesk 1.4.9 still uses this exchange. We verified a specific official 1.5.0 nightly build with the new exchange; a stable release containing this change has not been verified. Upgrade the remote client and reconnect; the negotiated exchange determines this warning.',
-  'webClient.legacyVerified':
-    'Verified 2026-09-30 · Windows nightly asset SHA-256 starts dc446869860d. Nightly is a development build; a version label alone is not proof.',
+    'Обновите RustDesk на удалённом устройстве и подключитесь снова.',
+  'webClient.legacyCompatibility':
+    'RustDesk 1.4.9 использует старый метод. Новый проверен в конкретной официальной сборке 1.5.0 nightly. Nightly — версия для разработки; номер версии сам по себе не гарантирует исправление.',
   'webClient.cancelConnection': 'Cancel connection',
   'webClient.localFiles': 'Local files',
   'webClient.localChooseFolder': 'Choose folder',
@@ -184,6 +184,7 @@ export default {
   'webClient.newEncryption': 'New key exchange',
   'webClient.connectionRoute': 'Connection',
   'webClient.relayConnection': 'Encrypted relay',
-  'webClient.fileFallback': 'Другие способы передачи',
+  'webClient.fileFallback': 'Загрузка и скачивание файлов',
   'webClient.fileUsePassword': 'Использовать пароль',
+  'webClient.fileUploadTarget': 'Удалённая папка',
 };
