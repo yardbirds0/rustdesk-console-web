@@ -1,6 +1,6 @@
 import { PageContainer } from '@ant-design/pro-components';
 import { useIntl, useLocation, useModel } from '@umijs/max';
-import { Alert, Button, Input, Space, Spin, theme } from 'antd';
+import { Alert, Button, Input, Space, Spin, Switch, theme } from 'antd';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   DesktopOutlined,
@@ -15,7 +15,10 @@ import { MAX_TEXT_BYTES } from '@/features/web-client/clipboard/text';
 import { IMAGE_LIMITS } from '@/features/web-client/clipboard/image';
 import type { KxVersion } from '@/features/web-client/core/crypto';
 import { normalizeTargetId } from '@/features/web-client/core/profile';
-import type { SessionState } from '@/features/web-client/core/session';
+import type {
+  SessionState,
+  ViewOptions,
+} from '@/features/web-client/core/session';
 import {
   type RemoteDisplay,
   RemoteInput,
@@ -52,6 +55,7 @@ export default function WebClientPage() {
   const [tool, setTool] = useState<ToolName>();
   const [fileOpen, setFileOpen] = useState(false);
   const [peerVersion, setPeerVersion] = useState<string>();
+  const [sasEnabled, setSasEnabled] = useState(false);
   const [noticesOpen, setNoticesOpen] = useState(false);
   const noticesElement = useRef<HTMLDivElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
@@ -92,6 +96,16 @@ export default function WebClientPage() {
   const displayEpoch = useRef(0);
   const [touchMode, setTouchMode] = useState<TouchMode>('pointer');
   const [viewport, setViewport] = useState<Viewport>({ scale: 1, x: 0, y: 0 });
+  const [viewStyle, setViewStyle] = useState<'fit' | 'original'>('fit');
+  const [viewOptions, setViewOptions] = useState<ViewOptions>({
+    quality: 'balanced',
+    fps: 30,
+    remoteCursor: true,
+  });
+  const remoteCursor = useRef(true);
+  remoteCursor.current = viewOptions.remoteCursor;
+  const [readOnly, setReadOnly] = useState(false);
+  const inputAllowed = permissions.keyboard && !readOnly;
   const viewportRef = useRef(viewport);
   viewportRef.current = viewport;
   const [softKeyboard, setSoftKeyboard] = useState(false);
@@ -193,6 +207,9 @@ export default function WebClientPage() {
     setDisplayReady(false);
     setDisplays([]);
     setPassword('');
+    setReadOnly(false);
+    setViewStyle('fit');
+    setViewOptions({ quality: 'balanced', fps: 30, remoteCursor: true });
     clearDisplay();
   };
 
@@ -301,6 +318,7 @@ export default function WebClientPage() {
             if (!message.permissions.clipboard) resetClipboard();
           } else if (message.type === 'peer') {
             setPeerVersion(message.peer.version || undefined);
+            setSasEnabled(!!message.peer.sasEnabled);
             const remote =
               message.peer.displays?.[message.peer.currentDisplay || 0];
             if (!remote) return;
@@ -431,12 +449,18 @@ export default function WebClientPage() {
             const marker = pointer.current;
             const element = canvas.current;
             marker.style.display =
-              x >= 0 && x < 1 && y >= 0 && y < 1 ? 'block' : 'none';
+              remoteCursor.current && x >= 0 && x < 1 && y >= 0 && y < 1
+                ? 'block'
+                : 'none';
+            const rect = element.getBoundingClientRect(),
+              host = element.parentElement;
+            if (!host) return;
+            const hostRect = host.getBoundingClientRect();
             marker.style.left = `${
-              element.offsetLeft + x * element.clientWidth
+              rect.left - hostRect.left + host.scrollLeft + x * rect.width
             }px`;
             marker.style.top = `${
-              element.offsetTop + y * element.clientHeight
+              rect.top - hostRect.top + host.scrollTop + y * rect.height
             }px`;
           }
         };
@@ -476,7 +500,7 @@ export default function WebClientPage() {
   useEffect(() => {
     if (
       !connected ||
-      !permissions.keyboard ||
+      !inputAllowed ||
       !displayReady ||
       !display ||
       !canvas.current
@@ -490,7 +514,7 @@ export default function WebClientPage() {
       handler.dispose();
       input.current = undefined;
     };
-  }, [connected, permissions.keyboard, displayReady, display]);
+  }, [connected, inputAllowed, displayReady, display]);
 
   useEffect(() => {
     const element = canvas.current;
@@ -498,7 +522,7 @@ export default function WebClientPage() {
     const paste = async (event: ClipboardEvent) => {
       event.preventDefault();
       if (readingPaste.current) return;
-      if (!permissions.clipboard || !permissions.keyboard) {
+      if (!permissions.clipboard || !inputAllowed) {
         setPasteStatus('denied');
         return;
       }
@@ -556,13 +580,7 @@ export default function WebClientPage() {
       window.removeEventListener('blur', cancelPaste);
       cancelPaste();
     };
-  }, [
-    connected,
-    displayReady,
-    display,
-    permissions.clipboard,
-    permissions.keyboard,
-  ]);
+  }, [connected, displayReady, display, permissions.clipboard, inputAllowed]);
 
   useEffect(() => {
     const pause = () => {
@@ -607,7 +625,7 @@ export default function WebClientPage() {
   useEffect(() => {
     if (
       !connected ||
-      !permissions.keyboard ||
+      !inputAllowed ||
       !displayReady ||
       !display ||
       !canvas.current
@@ -626,7 +644,7 @@ export default function WebClientPage() {
       handler.dispose();
       touch.current = undefined;
     };
-  }, [connected, permissions.keyboard, displayReady, display, touchMode]);
+  }, [connected, inputAllowed, displayReady, display, touchMode]);
   useEffect(() => {
     const reset = () => {
       input.current?.release();
@@ -698,6 +716,10 @@ export default function WebClientPage() {
       setTool(undefined);
       setFileOpen(false);
       setPeerVersion(undefined);
+      setSasEnabled(false);
+      setReadOnly(false);
+      setViewStyle('fit');
+      setViewOptions({ quality: 'balanced', fps: 30, remoteCursor: true });
       setNoticesOpen(false);
       setKxVersion(undefined);
       setError('');
@@ -762,6 +784,31 @@ export default function WebClientPage() {
       return;
     }
     void action.catch(() => setError('fullscreen'));
+  };
+  const adjustView = (mode: 'fit' | 'original', scale = 1) => {
+    cancelPaste();
+    input.current?.release();
+    releaseModifiers();
+    setViewStyle(mode);
+    const next = { scale, x: 0, y: 0 };
+    setViewport(next);
+    touch.current?.setViewport(next);
+  };
+  const updateOptions = (change: Partial<ViewOptions>) => {
+    const options = { ...viewOptions, ...change };
+    setViewOptions(options);
+    post({ type: 'view-options', options });
+    if (!options.remoteCursor && pointer.current)
+      pointer.current.style.display = 'none';
+  };
+  const toggleReadOnly = (enabled: boolean) => {
+    cancelPaste();
+    input.current?.release();
+    releaseModifiers();
+    setSoftKeyboard(false);
+    setSoftText('');
+    post({ type: 'read-only', enabled });
+    setReadOnly(enabled);
   };
   const authenticating = ['authenticating', 'awaitingApproval'].includes(state);
   const hasNotices =
@@ -868,19 +915,26 @@ export default function WebClientPage() {
             <div
               className={styles.screen}
               data-ready={connected && displayReady}
+              data-view-style={viewStyle}
             >
               <canvas
                 ref={canvas}
-                tabIndex={connected && permissions.keyboard ? 0 : -1}
+                tabIndex={connected && inputAllowed ? 0 : -1}
                 aria-label={text(
                   'desktop',
                   'Remote desktop. Focus to send keyboard and mouse input.',
                 )}
                 style={{
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  width: 'auto',
-                  height: 'auto',
+                  maxWidth: viewStyle === 'fit' ? '100%' : 'none',
+                  maxHeight: viewStyle === 'fit' ? '100%' : 'none',
+                  width:
+                    viewStyle === 'original' && display
+                      ? display.width * viewport.scale
+                      : 'auto',
+                  height:
+                    viewStyle === 'original' && display
+                      ? display.height * viewport.scale
+                      : 'auto',
                   touchAction: 'none',
                   transform:
                     'translate(' +
@@ -888,7 +942,7 @@ export default function WebClientPage() {
                     'px, ' +
                     viewport.y +
                     'px) scale(' +
-                    viewport.scale +
+                    (viewStyle === 'original' ? 1 : viewport.scale) +
                     ')',
                 }}
               />
@@ -963,7 +1017,15 @@ export default function WebClientPage() {
                         >
                           {text('authenticate', 'Send password')}
                         </Button>
+                        <Button onClick={disconnect}>
+                          {text('cancelConnection', 'Cancel connection')}
+                        </Button>
                       </div>
+                    )}
+                    {!authenticating && (
+                      <Button onClick={disconnect}>
+                        {text('cancelConnection', 'Cancel connection')}
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -980,6 +1042,7 @@ export default function WebClientPage() {
               connected={connected}
               busy={fileStatus.busy}
               audio={audioEnabled}
+              fileAllowed={permissions.file}
               text={text}
             >
               <div hidden={tool !== 'display'}>
@@ -1017,18 +1080,172 @@ export default function WebClientPage() {
                     </select>
                   </label>
                 )}
-                <Button
-                  onClick={() => {
-                    input.current?.release();
-                    releaseModifiers();
-                    setViewport({ scale: 1, x: 0, y: 0 });
-                    touch.current?.setViewport({ scale: 1, x: 0, y: 0 });
-                  }}
+                <fieldset
+                  className={styles.menuSegments}
+                  aria-label={text('viewMode', 'View mode')}
                 >
-                  {text('zoomReset', 'Reset zoom')}
-                </Button>
+                  <Button
+                    aria-pressed={viewStyle === 'fit'}
+                    onClick={() => adjustView('fit')}
+                  >
+                    {text('fitWindow', 'Fit window')}
+                  </Button>
+                  <Button
+                    aria-pressed={viewStyle === 'original'}
+                    onClick={() => adjustView('original')}
+                  >
+                    {text('originalSize', 'Original size')}
+                  </Button>
+                </fieldset>
+                <label className={styles.menuRow}>
+                  {text('zoom', 'Zoom')}
+                  <select
+                    className={styles.select}
+                    aria-label={text('zoom', 'Zoom')}
+                    value={
+                      [0.5, 0.75, 1, 1.25, 1.5, 2].includes(viewport.scale)
+                        ? viewport.scale
+                        : ''
+                    }
+                    onChange={(event) =>
+                      adjustView(viewStyle, Number(event.target.value))
+                    }
+                  >
+                    {![0.5, 0.75, 1, 1.25, 1.5, 2].includes(viewport.scale) && (
+                      <option value="">
+                        {Math.round(viewport.scale * 100)}%
+                      </option>
+                    )}
+                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map((scale) => (
+                      <option key={scale} value={scale}>
+                        {Math.round(scale * 100)}%
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className={styles.menuRow}>
+                  {text('quality', 'Image quality')}
+                  <select
+                    className={styles.select}
+                    aria-label={text('quality', 'Image quality')}
+                    value={viewOptions.quality}
+                    onChange={(event) =>
+                      updateOptions({
+                        quality: event.target.value as ViewOptions['quality'],
+                      })
+                    }
+                  >
+                    <option value="low">
+                      {text('qualityLow', 'Low bandwidth')}
+                    </option>
+                    <option value="balanced">
+                      {text('qualityBalanced', 'Balanced')}
+                    </option>
+                    <option value="best">
+                      {text('qualityBest', 'Best quality')}
+                    </option>
+                  </select>
+                </label>
+                <label className={styles.menuRow}>
+                  {text('frameRate', 'Frame rate limit')}
+                  <select
+                    className={styles.select}
+                    aria-label={text('frameRate', 'Frame rate limit')}
+                    value={viewOptions.fps}
+                    onChange={(event) =>
+                      updateOptions({ fps: Number(event.target.value) })
+                    }
+                  >
+                    {[10, 15, 20, 30, 60].map((fps) => (
+                      <option key={fps} value={fps}>
+                        {fps} FPS
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className={styles.menuRow}>
+                  <span>{text('remoteCursor', 'Remote cursor')}</span>
+                  <Switch
+                    size="small"
+                    aria-label={text('remoteCursor', 'Remote cursor')}
+                    checked={viewOptions.remoteCursor}
+                    onChange={(checked) =>
+                      updateOptions({ remoteCursor: checked })
+                    }
+                  />
+                </div>
+                <div className={styles.menuActions}>
+                  <Button onClick={() => adjustView(viewStyle)}>
+                    {text('zoomReset', 'Reset zoom')}
+                  </Button>
+                  <Button onClick={() => post({ type: 'refresh' })}>
+                    {text('refreshFrame', 'Refresh desktop')}
+                  </Button>
+                </div>
               </div>
               <div id="web-client-tool-input" hidden={tool !== 'input'}>
+                <h3>{text('toolInput', 'Keyboard')}</h3>
+                <div className={styles.menuRow}>
+                  <span>{text('readOnly', 'View only')}</span>
+                  <Switch
+                    size="small"
+                    aria-label={text('readOnly', 'View only')}
+                    checked={readOnly}
+                    onChange={toggleReadOnly}
+                  />
+                </div>
+                {!permissions.keyboard && (
+                  <p className={styles.panelHint}>
+                    {text(
+                      'inputDenied',
+                      'Keyboard and mouse are disabled by the remote device.',
+                    )}
+                  </p>
+                )}
+                <div className={styles.menuActions}>
+                  <Button
+                    disabled={!inputAllowed || !displayReady || !sasEnabled}
+                    title={
+                      !sasEnabled
+                        ? text(
+                            'sasUnavailable',
+                            'The remote client does not support Ctrl+Alt+Del.',
+                          )
+                        : undefined
+                    }
+                    onClick={() =>
+                      post({
+                        type: 'input',
+                        input: {
+                          keyEvent: {
+                            controlKey: hbb.ControlKey.CtrlAltDel,
+                            down: true,
+                            mode: hbb.KeyboardMode.Legacy,
+                          },
+                        },
+                      })
+                    }
+                  >
+                    Ctrl+Alt+Del
+                  </Button>
+                  <Button
+                    disabled={!inputAllowed || !displayReady}
+                    onClick={() =>
+                      post({
+                        type: 'input',
+                        input: {
+                          keyEvent: {
+                            controlKey: hbb.ControlKey.LockScreen,
+                            down: true,
+                            mode: hbb.KeyboardMode.Legacy,
+                          },
+                        },
+                      })
+                    }
+                  >
+                    {text('lockScreen', 'Lock remote screen')}
+                  </Button>
+                </div>
                 <p className={styles.panelHint}>
                   {text(
                     'keyboardMenuHint',
@@ -1068,7 +1285,7 @@ export default function WebClientPage() {
                     {text('zoomReset', 'Reset zoom')}
                   </Button>
                   <Button
-                    disabled={!permissions.keyboard || !displayReady}
+                    disabled={!inputAllowed || !displayReady}
                     onClick={() => {
                       releaseModifiers();
                       setSoftKeyboard(!softKeyboard);
@@ -1084,7 +1301,7 @@ export default function WebClientPage() {
                     <Button
                       key={controlKey}
                       aria-pressed={heldModifiers.includes(controlKey)}
-                      disabled={!permissions.keyboard || !displayReady}
+                      disabled={!inputAllowed || !displayReady}
                       onClick={() => {
                         const down = !modifierRef.current.includes(controlKey);
                         modifierRef.current = down
@@ -1107,10 +1324,15 @@ export default function WebClientPage() {
                     hbb.ControlKey.Return,
                     hbb.ControlKey.Escape,
                     hbb.ControlKey.Backspace,
+                    hbb.ControlKey.Delete,
+                    hbb.ControlKey.Home,
+                    hbb.ControlKey.End,
+                    hbb.ControlKey.PageUp,
+                    hbb.ControlKey.PageDown,
                   ].map((controlKey) => (
                     <Button
                       key={controlKey}
-                      disabled={!permissions.keyboard || !displayReady}
+                      disabled={!inputAllowed || !displayReady}
                       onClick={() =>
                         post({
                           type: 'input',
@@ -1136,9 +1358,7 @@ export default function WebClientPage() {
                         onChange={(event) => setSoftText(event.target.value)}
                       />
                       <Button
-                        disabled={
-                          !permissions.keyboard || !displayReady || !softText
-                        }
+                        disabled={!inputAllowed || !displayReady || !softText}
                         onClick={() => {
                           post({ type: 'text', text: softText });
                           setSoftText('');
@@ -1222,6 +1442,38 @@ export default function WebClientPage() {
                   />
                 </div>
               </div>
+              {tool === 'info' && (
+                <div>
+                  <h3>{text('connectionInfo', 'Connection information')}</h3>
+                  <dl className={styles.connectionInfo}>
+                    <dt>{text('id', 'Remote device ID')}</dt>
+                    <dd>{id}</dd>
+                    <dt>{text('remoteVersion', 'Remote client')}</dt>
+                    <dd>{peerVersion || '—'}</dd>
+                    <dt>{text('display', 'Monitor')}</dt>
+                    <dd>
+                      {display
+                        ? `${selectedDisplay + 1} · ${display.width} × ${
+                            display.height
+                          }`
+                        : '—'}
+                    </dd>
+                    <dt>{text('encryption', 'Encryption')}</dt>
+                    <dd>
+                      {kxVersion === undefined
+                        ? '—'
+                        : kxVersion === 0
+                        ? text('legacyBadge', 'Legacy encryption')
+                        : text('newEncryption', 'New key exchange')}
+                    </dd>
+                    <dt>{text('connectionRoute', 'Connection')}</dt>
+                    <dd>{text('relayConnection', 'Encrypted relay')}</dd>
+                  </dl>
+                  {kxVersion === 0 && (
+                    <LegacyEncryptionNotice text={text} version={peerVersion} />
+                  )}
+                </div>
+              )}
             </SessionToolbar>
             <FileDialog
               open={fileOpen}
@@ -1232,7 +1484,8 @@ export default function WebClientPage() {
               <FilePanel
                 key={'files-' + generation.current}
                 ref={files}
-                enabled={connected}
+                open={fileOpen}
+                enabled={connected && permissions.file}
                 post={post}
                 text={text}
                 onStatusChange={setFileStatus}

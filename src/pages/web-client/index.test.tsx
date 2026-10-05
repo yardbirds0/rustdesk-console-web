@@ -589,7 +589,6 @@ test.each(['configuration', 'crash', 'failed'] as const)(
 test('文件会话单独认证并拒绝断开后的目录事件', async () => {
   await start();
   openTool('File transfer');
-  fireEvent.click(screen.getByText('Connect files'));
   const fileGeneration =
     worker.postMessage.mock.calls.at(-1)?.[0].fileGeneration;
   expect(fileGeneration).toBe(1);
@@ -600,6 +599,8 @@ test('文件会话单独认证并拒绝断开后的目录事件', async () => {
     fileGeneration,
     generation,
   });
+  expect(screen.queryByLabelText('File session password')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Use password' }));
   fireEvent.change(screen.getByLabelText('File session password'), {
     target: { value: 'file-only' },
   });
@@ -637,7 +638,93 @@ test('文件会话单独认证并拒绝断开后的目录事件', async () => {
     fileGeneration,
     generation,
   });
-  expect(screen.queryByLabelText('Remote directory')).toBeNull();
+  expect(value('Remote directory')).toBe('');
+  expect(
+    (screen.getByLabelText('Remote directory') as HTMLInputElement).disabled,
+  ).toBe(true);
+});
+
+test('文件撤权清理后拒绝同代次迟到事件，恢复权限须重新连接', async () => {
+  await start();
+  openTool('File transfer');
+  const fileGeneration = Number(
+    worker.postMessage.mock.calls.find(([m]) => m.type === 'files-connect')?.[0]
+      .fileGeneration,
+  );
+  const generation = worker.generation;
+  const emit = (message: object) =>
+    worker.emit({ ...message, generation, fileGeneration });
+  emit({ type: 'files-state', state: 'connected' });
+  emit({
+    type: 'files-event',
+    event: { type: 'directory', path: 'C:/Files', entries: [] },
+  });
+  worker.emit({
+    type: 'permissions',
+    permissions: { keyboard: true, clipboard: true, audio: true, file: false },
+    generation,
+  });
+  expect(value('Remote directory')).toBe('');
+  emit({ type: 'files-state', state: 'connected' });
+  emit({
+    type: 'files-event',
+    event: { type: 'directory', path: 'C:/Late', entries: [] },
+  });
+  emit({ type: 'files-error', code: 'password' });
+  expect(value('Remote directory')).toBe('');
+  expect(screen.queryByLabelText('File session password')).toBeNull();
+  expect(
+    (screen.getByLabelText('Remote directory') as HTMLInputElement).disabled,
+  ).toBe(true);
+  worker.emit({
+    type: 'permissions',
+    permissions: { keyboard: true, clipboard: true, audio: true, file: true },
+    generation,
+  });
+  await waitFor(() =>
+    expect(
+      worker.postMessage.mock.calls.filter(([m]) => m.type === 'files-connect'),
+    ).toHaveLength(2),
+  );
+  expect(
+    Number(worker.postMessage.mock.calls.at(-1)?.[0].fileGeneration),
+  ).toBeGreaterThan(fileGeneration);
+});
+
+test('文件自动认证等待时不要求重输密码，认证失败后才展开输入', async () => {
+  await start();
+  openTool('File transfer');
+  const fileGeneration =
+    worker.postMessage.mock.calls.at(-1)?.[0].fileGeneration;
+  const generation = worker.generation;
+  worker.emit({
+    type: 'files-state',
+    state: 'authenticating',
+    fileGeneration,
+    generation,
+  });
+  expect(screen.queryByLabelText('File session password')).toBeNull();
+  worker.emit({
+    type: 'files-error',
+    code: 'password',
+    fileGeneration,
+    generation,
+  });
+  worker.emit({
+    type: 'files-state',
+    state: 'awaitingApproval',
+    fileGeneration,
+    generation,
+  });
+  expect(screen.getByLabelText('File session password')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Use password' })).toBeNull();
+  worker.emit({
+    type: 'files-state',
+    state: 'connected',
+    fileGeneration,
+    generation,
+  });
+  expect(screen.queryByLabelText('File session password')).toBeNull();
 });
 
 test('软键盘显式发送组合文本，并携带当前显示代次', async () => {
@@ -654,7 +741,7 @@ test('软键盘显式发送组合文本，并携带当前显示代次', async ()
     generation: worker.generation,
   });
   openTool('Input controls');
-  fireEvent.click(screen.getByText('Keyboard'));
+  fireEvent.click(screen.getByText('Keyboard', { selector: 'button' }));
   fireEvent.change(screen.getByLabelText('Keyboard text'), {
     target: { value: '中文输入' },
   });
@@ -693,7 +780,6 @@ test('独立审查：取消旧下载后其迟到写入失败不能取消新下�
   try {
     await start();
     openTool('File transfer');
-    fireEvent.click(screen.getByText('Connect files'));
     const generation = worker.generation;
     const fileGeneration =
       worker.postMessage.mock.calls.at(-1)?.[0].fileGeneration;
@@ -855,7 +941,6 @@ test('独立审查：旧音频启动失败不能关闭后来启动的播放器',
 test('文件窗口收起保持文件会话、目录和画布；菜单切换不触发断开', async () => {
   const desktop = await readyDesktop();
   openTool('File transfer');
-  fireEvent.click(screen.getByRole('button', { name: 'Connect files' }));
   const fileGeneration =
     worker.postMessage.mock.calls.at(-1)?.[0].fileGeneration;
   worker.emit({
@@ -924,7 +1009,6 @@ test('关闭键盘菜单释放修饰键且隐藏内容不能操作', async () =>
 test('文件窗口隐藏后仍显示属于文件会话的旧协议与错误', async () => {
   await start();
   openTool('File transfer');
-  fireEvent.click(screen.getByText('Connect files'));
   const fileGeneration =
     worker.postMessage.mock.calls.at(-1)?.[0].fileGeneration;
   worker.emit({
@@ -1130,7 +1214,6 @@ test('旧协议说明包含风险、已验证nightly与日期，不根据版本�
 test('目录编辑与已加载路径分离，失败时上传仍使用原目录', async () => {
   await start();
   openTool('File transfer');
-  fireEvent.click(screen.getByText('Connect files'));
   const fileGeneration =
     worker.postMessage.mock.calls.at(-1)?.[0].fileGeneration;
   const emit = (event: object) =>
@@ -1186,7 +1269,6 @@ test('目录编辑与已加载路径分离，失败时上传仍使用原目录',
 test('单击文件只选中，下载必须通过明确按钮启动', async () => {
   await start();
   openTool('File transfer');
-  fireEvent.click(screen.getByText('Connect files'));
   const fileGeneration =
     worker.postMessage.mock.calls.at(-1)?.[0].fileGeneration;
   worker.emit({
@@ -1248,4 +1330,282 @@ test('窗口失焦后再聚焦也拒绝旧Worker剪贴板代次和图片', async
     generation: worker.generation,
   });
   expect(navigator.clipboard.writeText).toHaveBeenCalledWith('fresh');
+});
+
+test.each(['connecting', 'securing', 'authenticating', 'awaitingApproval'])(
+  '连接中 %s 可以直接取消，并拒绝迟到的成功',
+  async (state) => {
+    const view = render(React.createElement(WebClientPage));
+    await waitFor(() => expect(worker.onmessage).toBeDefined());
+    worker.emit({
+      type: 'ready',
+      secureContext: true,
+      videoDecoder: true,
+      generation: 0,
+    });
+    fireEvent.click(screen.getByText('Connect'));
+    const generation = worker.generation;
+    worker.emit({ type: 'state', state, generation });
+    if (state === 'authenticating' || state === 'awaitingApproval')
+      fireEvent.change(screen.getByLabelText('Remote device password'), {
+        target: { value: 'discard-me' },
+      });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel connection' }));
+    expect(worker.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'disconnect',
+        generation: generation + 1,
+      }),
+    );
+    worker.emit({ type: 'state', state: 'connected', generation });
+    expect(
+      view.container
+        .querySelector('[data-session-state]')
+        ?.getAttribute('data-session-state'),
+    ).toBe('closed');
+    expect(
+      screen.queryByRole('button', { name: 'Cancel connection' }),
+    ).toBeNull();
+    expect(
+      view.container.querySelector('[data-workspace]')?.hasAttribute('hidden'),
+    ).toBe(true);
+  },
+);
+
+test('显示菜单实际发送选项；缩放不重建画布，只读禁用输入与粘贴', async () => {
+  const desktop = await readyDesktop();
+  openTool('Display');
+  fireEvent.change(screen.getByLabelText('Image quality'), {
+    target: { value: 'best' },
+  });
+  fireEvent.change(screen.getByLabelText('Frame rate limit'), {
+    target: { value: '15' },
+  });
+  fireEvent.click(screen.getByRole('switch', { name: 'Remote cursor' }));
+  expect(worker.postMessage).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      type: 'view-options',
+      options: { quality: 'best', fps: 15, remoteCursor: false },
+    }),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Original size' }));
+  expect(desktop.style.width).toBe('800px');
+  expect(desktop.style.maxWidth).toBe('none');
+  fireEvent.change(screen.getByLabelText('Zoom'), { target: { value: '1.5' } });
+  expect(desktop.style.width).toBe('1200px');
+  fireEvent.click(screen.getByRole('button', { name: 'Fit window' }));
+  expect(desktop.style.maxWidth).toBe('100%');
+  expect(
+    screen.getByLabelText(
+      'Remote desktop. Focus to send keyboard and mouse input.',
+    ),
+  ).toBe(desktop);
+  openTool('Input controls');
+  expect(
+    (screen.getByRole('button', { name: 'Ctrl+Alt+Del' }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
+  fireEvent.click(screen.getByRole('switch', { name: 'View only' }));
+  expect(worker.postMessage).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'read-only', enabled: true }),
+  );
+  expect(desktop.tabIndex).toBe(-1);
+  expect(
+    (
+      screen.getByRole('button', {
+        name: 'Lock remote screen',
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(true);
+  const count = worker.postMessage.mock.calls.filter(
+    ([m]) => m.type === 'paste',
+  ).length;
+  fireEvent.paste(desktop, {
+    clipboardData: { items: [], getData: () => 'must-not-send' },
+  });
+  expect(
+    worker.postMessage.mock.calls.filter(([m]) => m.type === 'paste'),
+  ).toHaveLength(count);
+  worker.emit({
+    type: 'permissions',
+    permissions: { keyboard: false, clipboard: true, audio: true, file: true },
+    generation: worker.generation,
+  });
+  fireEvent.click(screen.getByRole('switch', { name: 'View only' }));
+  expect(desktop.tabIndex).toBe(-1);
+  expect(
+    (
+      screen.getByRole('button', {
+        name: 'Lock remote screen',
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(true);
+});
+
+test('双栏授权目录按需上传并直接接收，重名确认与收起不影响目录', async () => {
+  const write = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+  const close = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+  const abort = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+  const getFile = jest
+    .fn<() => Promise<File>>()
+    .mockResolvedValue(new File(['local'], 'local.txt'));
+  const localFile = { kind: 'file', name: 'local.txt', getFile };
+  const received = {
+    kind: 'file',
+    name: 'remote.txt',
+    createWritable: jest
+      .fn<() => Promise<object>>()
+      .mockResolvedValue({ write, close, abort }),
+  };
+  const root = {
+    kind: 'directory',
+    name: 'Chosen',
+    async *entries() {
+      yield ['local.txt', localFile];
+    },
+    queryPermission: async () => 'granted',
+    getFileHandle: jest
+      .fn<(name: string, options?: { create?: boolean }) => Promise<object>>()
+      .mockResolvedValue(received),
+  };
+  Object.assign(window, {
+    showDirectoryPicker: jest
+      .fn<() => Promise<object>>()
+      .mockResolvedValue(root),
+  });
+  try {
+    await start();
+    openTool('File transfer');
+    const fileGeneration = Number(
+      worker.postMessage.mock.calls.find(
+        ([m]) => m.type === 'files-connect',
+      )![0].fileGeneration,
+    );
+    worker.emit({
+      type: 'files-state',
+      state: 'connected',
+      generation: worker.generation,
+      fileGeneration,
+    });
+    const emit = (event: object) =>
+      worker.emit({
+        type: 'files-event',
+        event,
+        generation: worker.generation,
+        fileGeneration,
+      });
+    emit({
+      type: 'directory',
+      path: 'C:/Files',
+      entries: [
+        {
+          name: 'remote.txt',
+          path: 'C:/Files/remote.txt',
+          size: 1,
+          directory: false,
+        },
+      ],
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Choose folder' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'local.txt' })).toBeTruthy(),
+    );
+    expect(getFile).not.toHaveBeenCalled();
+    const fallback = screen
+      .getByText('Other transfer methods')
+      .closest('details');
+    expect(fallback?.open).toBe(false);
+    fireEvent.click(screen.getByText('Other transfer methods'));
+    expect(fallback?.open).toBe(true);
+    expect(
+      screen.getByRole('button', { name: 'Download selected file' }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByText('Other transfer methods'));
+    expect(fallback?.open).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'local.txt' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Send to remote folder' }),
+    );
+    await waitFor(() =>
+      expect(worker.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: expect.objectContaining({
+            type: 'upload',
+            path: 'C:/Files',
+          }),
+        }),
+      ),
+    );
+    expect(getFile).toHaveBeenCalledTimes(1);
+    emit({
+      type: 'progress',
+      progress: {
+        id: 1,
+        name: 'local.txt',
+        direction: 'upload',
+        phase: 'done',
+        total: 5,
+        transferred: 5,
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'remote.txt' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Receive in local folder' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText(/A local file with this name exists/),
+      ).toBeTruthy(),
+    );
+    expect(received.createWritable).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Overwrite local file' }),
+    );
+    await waitFor(() =>
+      expect(worker.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: {
+            type: 'download',
+            name: 'remote.txt',
+            size: 1,
+            path: 'C:/Files/remote.txt',
+          },
+        }),
+      ),
+    );
+    emit({
+      type: 'progress',
+      progress: {
+        id: 2,
+        name: 'remote.txt',
+        direction: 'download',
+        phase: 'waiting',
+        total: 1,
+        transferred: 0,
+      },
+    });
+    emit({ type: 'chunk', id: 2, sequence: 1, bytes: new Uint8Array([7]) });
+    await waitFor(() =>
+      expect(worker.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: { type: 'consumed', id: 2, sequence: 1, ok: true },
+        }),
+      ),
+    );
+    emit({ type: 'download-done', id: 2, sequence: 2 });
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(abort).not.toHaveBeenCalled();
+    const count = worker.postMessage.mock.calls.filter(
+      ([m]) => m.type === 'files-connect',
+    ).length;
+    hideFiles();
+    openTool('File transfer');
+    expect(value('Path within the selected local folder')).toBe('/');
+    expect(
+      worker.postMessage.mock.calls.filter(([m]) => m.type === 'files-connect'),
+    ).toHaveLength(count);
+  } finally {
+    Reflect.deleteProperty(window, 'showDirectoryPicker');
+  }
 });

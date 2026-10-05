@@ -1,7 +1,11 @@
 import type { KxVersion } from '../core/crypto';
 import type { SessionErrorCode } from '../core/errors';
 import type { ServerProfile } from '../core/profile';
-import type { SessionPermissions, SessionState } from '../core/session';
+import type {
+  SessionPermissions,
+  SessionState,
+  ViewOptions,
+} from '../core/session';
 import type { FileCommand, FileEvent } from '../files/transfer';
 import type { PcmFrame } from '../media/opus';
 import type { hbb } from '../protocol';
@@ -13,6 +17,8 @@ export type SessionCommand =
   | { type: 'rendered'; displayGeneration: number }
   | { type: 'select-display'; index: number }
   | { type: 'audio'; enabled: boolean }
+  | { type: 'read-only'; enabled: boolean }
+  | { type: 'view-options'; options: ViewOptions }
   | { type: 'image'; bytes: Uint8Array }
   | { type: 'paste'; content: { text: string } | { bytes: Uint8Array } }
   | { type: 'cancel-paste' }

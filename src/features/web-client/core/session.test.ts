@@ -3,7 +3,11 @@ import { afterEach, beforeAll, expect, jest, test } from '@jest/globals';
 import sodium from 'libsodium-wrappers';
 import { hbb } from '../protocol';
 import * as cryptography from './crypto';
-import { RemoteSession, type SessionState } from './session';
+import {
+  RemoteSession,
+  type FileAuthentication,
+  type SessionState,
+} from './session';
 
 beforeAll(cryptography.cryptoReady);
 const active: RemoteSession[] = [];
@@ -39,6 +43,14 @@ class Socket {
 function fixture(
   options: {
     kind?: 'desktop' | 'file';
+    serverKey?: {
+      publicKey: Uint8Array;
+      privateKey: Uint8Array;
+      keyType: string;
+    };
+    salt?: string;
+    challenge?: string;
+    wrongPassword?: boolean;
     wrongIdentity?: boolean;
     offline?: boolean;
     deny?: boolean;
@@ -51,7 +63,7 @@ function fixture(
     peerInfo?: hbb.IPeerInfo;
   } = {},
 ) {
-  const server = sodium.crypto_sign_keypair();
+  const server = options.serverKey ?? sodium.crypto_sign_keypair();
   const peer = sodium.crypto_sign_keypair();
   const box = sodium.crypto_box_keypair();
   const id = '123456789';
@@ -164,7 +176,12 @@ function fixture(
             });
             secret.fill(0);
             if (!options.noChallenge)
-              send({ hash: { salt: 'salt', challenge: 'challenge' } });
+              send({
+                hash: {
+                  salt: options.salt ?? 'salt',
+                  challenge: options.challenge ?? 'challenge',
+                },
+              });
             return;
           }
           const message = hbb.Message.decode(cipher.decrypt(bytes));
@@ -172,7 +189,10 @@ function fixture(
           if (message.loginRequest && options.clickOnly) {
             send({ loginResponse: { error: 'No Password Access' } });
           } else if (message.loginRequest?.password?.length) {
-            if (options.deny) send({ loginResponse: { error: 'Rejected' } });
+            if (options.wrongPassword)
+              send({ loginResponse: { error: 'Wrong Password' } });
+            else if (options.deny)
+              send({ loginResponse: { error: 'Rejected' } });
             else
               send({
                 loginResponse: {
@@ -200,9 +220,11 @@ function fixture(
       sodium.base64_variants.ORIGINAL,
     ),
   };
-  const connect = () => session.connect(profile, id);
+  const connect = (reuse?: FileAuthentication) =>
+    session.connect(profile, id, reuse);
   return {
     session,
+    serverKey: server,
     connect,
     profile,
     states,
@@ -633,7 +655,7 @@ test('newer password submission wins and an obsolete hash cannot fail a live con
     .mockImplementationOnce(delayed);
   const first = f.session.submitPassword('first');
   const second = f.session.submitPassword('second');
-  pending[1](new Uint8Array([2]).buffer);
+  pending[1](new Uint8Array(32).fill(2).buffer);
   await second;
   await until(() => f.states.includes('connected'));
   const obsolete = new Uint8Array([1]);
@@ -807,6 +829,370 @@ test('独立 FileTransfer 登录复用签名认证且不订阅画面或授予输
   await f.session.sendFile({ fileAction: { readDir: { path: 'C:/Users' } } });
   await until(() => f.clientMessages.some((m) => !!m.fileAction?.readDir));
   expect(f.security).toContain(1);
+  f.session.disconnect();
+  await run;
+});
+
+test.each([0, 1])(
+  '当前桌面候选对文件新 challenge 重新认证，sessionId 无损关联（KX %s）',
+  async (kxVersion) => {
+    const desktop = await connectedFixture(kxVersion);
+    const candidate = desktop.session.authenticationForFiles()!;
+    expect(candidate).toBeDefined();
+    const desktopLogin = desktop.clientMessages
+      .filter((m) => m.loginRequest?.password?.length)
+      .at(-1)!.loginRequest!;
+    expect(typeof desktopLogin.sessionId).not.toBe('number');
+    expect(desktopLogin.sessionId!.toString()).not.toBe('0');
+    const files = fixture({
+      kind: 'file',
+      kxVersion,
+      serverKey: desktop.serverKey,
+      challenge: 'new-file-challenge',
+      peerInfo: { platform: 'Windows' },
+    });
+    const expected = await cryptography.passwordChallenge(
+      'synthetic',
+      'salt',
+      'new-file-challenge',
+    );
+    const run = files.connect(candidate);
+    await until(() => files.states.at(-1) === 'connected');
+    const login = files.clientMessages.find(
+      (m) => m.loginRequest,
+    )?.loginRequest;
+    if (!login) throw new Error('Missing file login');
+    expect(login.sessionId!.toString()).toBe(
+      desktopLogin.sessionId!.toString(),
+    );
+    expect(login.password).toEqual(expected);
+    expect(login.password).not.toEqual(desktopLogin.password);
+    expect(candidate.passwordH1.every((b) => b === 0)).toBe(true);
+    expect(files.relayRequests[0].connType).toBe(hbb.ConnType.FILE_TRANSFER);
+    expect(files.session.authenticationForFiles()).toBeUndefined();
+    files.session.disconnect();
+    await run;
+    desktop.session.disconnect();
+    await desktop.run;
+  },
+);
+
+test.each(['salt', 'profile', 'wrong', 'click'])(
+  '文件自动认证 %s 不绕过新认证且清零副本',
+  async (reason) => {
+    const desktop = await connectedFixture();
+    const candidate = desktop.session.authenticationForFiles()!;
+    const files = fixture({
+      kind: 'file',
+      serverKey: reason === 'profile' ? undefined : desktop.serverKey,
+      salt: reason === 'salt' ? 'different-salt' : 'salt',
+      wrongPassword: reason === 'wrong',
+      clickOnly: reason === 'click',
+    });
+    const run = files.connect(candidate);
+    await until(() => files.clientMessages.some((m) => m.loginRequest));
+    await until(() => candidate.passwordH1.every((b) => b === 0));
+    expect(files.states).not.toContain('connected');
+    expect(files.clientMessages.filter((m) => m.loginRequest)).toHaveLength(1);
+    if (reason === 'salt' || reason === 'profile')
+      expect(files.clientMessages[0].loginRequest!.password).toHaveLength(0);
+    if (reason === 'wrong')
+      await until(() => files.errors.includes('password'));
+    files.session.disconnect();
+    await run;
+    desktop.session.disconnect();
+    await desktop.run;
+  },
+);
+
+test('错误密码后人工批准不保留候选；纯人工批准也无文件材料', async () => {
+  const f = fixture({ wrongPassword: true });
+  const run = f.connect();
+  await until(() => f.states.at(-1) === 'awaitingApproval');
+  await f.session.submitPassword('incorrect');
+  await until(() => f.errors.includes('password'));
+  f.send({
+    loginResponse: {
+      peerInfo: {
+        platform: 'Windows',
+        displays: [{ width: 100, height: 100 }],
+      },
+    },
+  });
+  await until(() => f.states.at(-1) === 'connected');
+  expect(f.session.authenticationForFiles()).toBeUndefined();
+  f.session.disconnect();
+  await run;
+  const click = fixture({ clickOnly: true });
+  const clickRun = click.connect();
+  await until(() => click.states.at(-1) === 'awaitingApproval');
+  click.send({
+    loginResponse: {
+      peerInfo: {
+        platform: 'Windows',
+        displays: [{ width: 100, height: 100 }],
+      },
+    },
+  });
+  await until(() => click.states.at(-1) === 'connected');
+  expect(click.session.authenticationForFiles()).toBeUndefined();
+  click.session.disconnect();
+  await clickRun;
+});
+
+test.each(['Wrong Password', 'No Password Access'])(
+  'H2 派生期间收到 %s 和人工成功，不复活敏感候选或重发登录',
+  async (error) => {
+    const f = fixture();
+    const run = f.connect();
+    await until(() => f.states.at(-1) === 'awaitingApproval');
+    const first = new Uint8Array(32).fill(7);
+    let finish!: (value: ArrayBuffer) => void;
+    jest
+      .spyOn(crypto.subtle, 'digest')
+      .mockResolvedValueOnce(first.buffer)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+    const submitted = f.session.submitPassword('synthetic');
+    await until(() => !!finish);
+    f.send({ loginResponse: { error } });
+    await until(() =>
+      error === 'Wrong Password'
+        ? f.errors.includes('password')
+        : f.states.at(-1) === 'awaitingApproval',
+    );
+    f.send({
+      loginResponse: {
+        peerInfo: {
+          platform: 'Windows',
+          displays: [{ width: 100, height: 100 }],
+        },
+      },
+    });
+    await until(() => f.states.at(-1) === 'connected');
+    const second = new Uint8Array(32).fill(8);
+    finish(second.buffer);
+    await submitted;
+    expect(f.session.authenticationForFiles()).toBeUndefined();
+    expect(first.every((byte) => byte === 0)).toBe(true);
+    expect(second.every((byte) => byte === 0)).toBe(true);
+    expect(f.clientMessages.filter((m) => m.loginRequest)).toHaveLength(1);
+    f.session.disconnect();
+    await run;
+  },
+);
+
+test('文件撤权和断开清除桌面敏感材料，不可跨目标复用', async () => {
+  const f = await connectedFixture();
+  const candidate = f.session.authenticationForFiles()!;
+  f.send({
+    misc: {
+      permissionInfo: {
+        permission: hbb.PermissionInfo.Permission.File,
+        enabled: false,
+      },
+    },
+  });
+  await until(() => f.session.authenticationForFiles() === undefined);
+  f.session.disconnect();
+  await f.run;
+  const files = fixture({ kind: 'file', serverKey: f.serverKey });
+  candidate.targetId = '987654321';
+  const run = files.connect(candidate);
+  await until(() => files.clientMessages.some((m) => m.loginRequest));
+  expect(files.clientMessages[0].loginRequest!.password).toHaveLength(0);
+  expect(candidate.passwordH1.every((b) => b === 0)).toBe(true);
+  files.session.disconnect();
+  await run;
+});
+
+test('文件撤权再恢复不能复活期间仍在派生的密码材料', async () => {
+  const f = fixture();
+  const run = f.connect();
+  await until(() => f.states.at(-1) === 'awaitingApproval');
+  let finish!: (value: ArrayBuffer) => void;
+  jest.spyOn(crypto.subtle, 'digest').mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const submitted = f.session.submitPassword('synthetic');
+  f.send({
+    misc: {
+      permissionInfo: {
+        permission: hbb.PermissionInfo.Permission.File,
+        enabled: false,
+      },
+    },
+  });
+  await until(() => f.permissions.length === 1);
+  f.send({
+    misc: {
+      permissionInfo: {
+        permission: hbb.PermissionInfo.Permission.File,
+        enabled: true,
+      },
+    },
+  });
+  await until(() => f.permissions.length === 2);
+  const hash = new Uint8Array(32).fill(9);
+  finish(hash.buffer);
+  await submitted;
+  await until(() => f.states.at(-1) === 'connected');
+  expect(f.session.authenticationForFiles()).toBeUndefined();
+  expect(hash.every((b) => b === 0)).toBe(true);
+  f.session.disconnect();
+  await run;
+});
+
+test('显示选项使用原生 OptionMessage，拒绝无界或错误值', async () => {
+  const f = await connectedFixture();
+  expect(
+    f.session.setViewOptions({ quality: 'best', fps: 15, remoteCursor: false }),
+  ).toBe(true);
+  await until(() =>
+    f.clientMessages.some((m) => m.misc?.option?.customFps === 15),
+  );
+  expect(f.clientMessages.at(-1)?.misc?.option).toMatchObject({
+    imageQuality: hbb.ImageQuality.Best,
+    customFps: 15,
+    showRemoteCursor: hbb.OptionMessage.BoolOption.No,
+  });
+  const count = f.clientMessages.length;
+  for (const fps of [0, 4, 61, 1.5, Infinity, NaN])
+    expect(
+      f.session.setViewOptions({
+        quality: 'balanced',
+        fps,
+        remoteCursor: true,
+      }),
+    ).toBe(false);
+  expect(
+    f.session.setViewOptions({
+      quality: 'unsupported' as 'best',
+      fps: 30,
+      remoteCursor: true,
+    }),
+  ).toBe(false);
+  expect(f.clientMessages).toHaveLength(count);
+  f.session.disconnect();
+  await f.run;
+});
+
+test('只读先释放按下状态，再阻止所有键鼠与文本；不伪装撤权', async () => {
+  const f = await connectedFixture();
+  const controlKey = hbb.ControlKey.Shift;
+  f.session.sendInput({ keyEvent: { controlKey, down: true } });
+  f.session.sendInput({ mouseEvent: { mask: 1 | (1 << 3) } });
+  expect(f.session.setReadOnly(true)).toBe(true);
+  await until(
+    () =>
+      f.clientMessages.filter((m) => m.keyEvent || m.mouseEvent).length === 4,
+  );
+  expect(
+    f.clientMessages.filter((m) => m.keyEvent || m.mouseEvent).slice(-2),
+  ).toMatchObject([
+    { keyEvent: { controlKey, down: false } },
+    { mouseEvent: { mask: 2 | (1 << 3) } },
+  ]);
+  expect(
+    f.session.sendInput({ keyEvent: { seq: 'blocked', press: true } }),
+  ).toBe(false);
+  expect(f.session.sendInput({ mouseEvent: { mask: 0, x: 1, y: 1 } })).toBe(
+    false,
+  );
+  expect(f.session.setReadOnly(false)).toBe(true);
+  expect(
+    f.session.sendInput({ keyEvent: { seq: 'allowed', press: true } }),
+  ).toBe(true);
+  await keyboardPermission(f, false);
+  f.session.setReadOnly(true);
+  f.session.setReadOnly(false);
+  expect(
+    f.session.sendInput({ keyEvent: { seq: 'still-blocked', press: true } }),
+  ).toBe(false);
+  f.session.disconnect();
+  await f.run;
+});
+
+test('只读不穿过撤权发送释放，恢复权限只清理原持键', async () => {
+  const f = await connectedFixture();
+  f.session.sendInput({
+    keyEvent: { controlKey: hbb.ControlKey.Shift, down: true },
+  });
+  await keyboardPermission(f, false);
+  const before = f.clientMessages.length;
+  f.session.setReadOnly(true);
+  await new Promise((resolve) => setTimeout(resolve, 1));
+  expect(f.clientMessages).toHaveLength(before);
+  await keyboardPermission(f, true);
+  expect(f.clientMessages.at(-1)?.keyEvent).toMatchObject({
+    controlKey: hbb.ControlKey.Shift,
+    down: false,
+  });
+  expect(
+    f.session.sendInput({ keyEvent: { seq: 'read-only', press: true } }),
+  ).toBe(false);
+  f.session.disconnect();
+  await f.run;
+});
+
+test('SAS 按能力启用，原生功能键不会被登记为持键并重复发送', async () => {
+  const f = await connectedFixture();
+  expect(
+    f.session.sendInput({
+      keyEvent: { controlKey: hbb.ControlKey.CtrlAltDel, down: true },
+    }),
+  ).toBe(false);
+  f.send({
+    peerInfo: {
+      platform: 'Windows',
+      sasEnabled: true,
+      displays: [{ width: 800, height: 600 }],
+    },
+  });
+  await until(() => f.messages.some((m) => m.peerInfo));
+  expect(
+    f.session.sendInput({
+      keyEvent: {
+        controlKey: hbb.ControlKey.CtrlAltDel,
+        down: true,
+        mode: hbb.KeyboardMode.Legacy,
+      },
+    }),
+  ).toBe(true);
+  expect(
+    f.session.sendInput({
+      keyEvent: {
+        controlKey: hbb.ControlKey.LockScreen,
+        down: true,
+        mode: hbb.KeyboardMode.Legacy,
+      },
+    }),
+  ).toBe(true);
+  await until(() => f.clientMessages.filter((m) => m.keyEvent).length === 2);
+  f.session.setReadOnly(true);
+  f.session.disconnect();
+  await f.run;
+  expect(f.clientMessages.filter((m) => m.keyEvent)).toHaveLength(2);
+});
+
+test('随机 uint64 高位及低位均经 protobuf 无损传递', async () => {
+  jest.spyOn(crypto, 'getRandomValues').mockImplementationOnce((array) => {
+    (array as Uint8Array).set([255, 255, 255, 255, 255, 255, 255, 253]);
+    return array;
+  });
+  const f = fixture();
+  const run = f.connect();
+  await until(() => f.clientMessages.some((m) => m.loginRequest));
+  expect(f.clientMessages[0].loginRequest!.sessionId!.toString()).toBe(
+    '18446744073709551613',
+  );
   f.session.disconnect();
   await run;
 });

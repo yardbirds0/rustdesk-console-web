@@ -5,7 +5,7 @@ export interface DownloadSink {
   close(): Promise<void>;
   abort(): Promise<void>;
 }
-interface WritableFile {
+export interface WritableFile {
   write(bytes: Uint8Array): Promise<void>;
   close(): Promise<void>;
   abort(): Promise<void>;
@@ -30,6 +30,21 @@ export async function chooseDownload(
     ).createWritable();
   else if (size > FILE_LIMITS.fallback)
     throw new Error('Streaming download unavailable');
+  return createDownloadSink(name, size, writer);
+}
+
+export function createDownloadSink(
+  name: string,
+  size: number,
+  writer?: WritableFile,
+): DownloadSink {
+  safeName(name);
+  if (
+    !Number.isSafeInteger(size) ||
+    size < 0 ||
+    (!writer && size > FILE_LIMITS.fallback)
+  )
+    throw new Error('Invalid download size');
   let chunks: Uint8Array[] = [];
   let written = 0;
   let ended = false;

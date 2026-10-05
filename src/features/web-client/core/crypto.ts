@@ -186,25 +186,38 @@ export class SessionCipher {
   }
 }
 
+// H1 只属于当前 Worker 会话；调用方必须在失效时清零。
+export async function derivePasswordHash(password: string, salt: string) {
+  const salted = new TextEncoder().encode(password + salt);
+  try {
+    return new Uint8Array(await crypto.subtle.digest('SHA-256', salted));
+  } finally {
+    sodium.memzero(salted);
+  }
+}
+
+export async function challengeFromHash(first: Uint8Array, challenge: string) {
+  if (first.length !== 32) throw new SessionError('protocol');
+  const suffix = new TextEncoder().encode(challenge);
+  const input = new Uint8Array(first.length + suffix.length);
+  input.set(first);
+  input.set(suffix, first.length);
+  try {
+    return new Uint8Array(await crypto.subtle.digest('SHA-256', input));
+  } finally {
+    sodium.memzero(input);
+  }
+}
+
 export async function passwordChallenge(
   password: string,
   salt: string,
   challenge: string,
 ): Promise<Uint8Array> {
-  const encoder = new TextEncoder();
-  const salted = encoder.encode(password + salt);
-  let first: Uint8Array<ArrayBuffer> | undefined;
-  let input: Uint8Array<ArrayBuffer> | undefined;
+  const first = await derivePasswordHash(password, salt);
   try {
-    first = new Uint8Array(await crypto.subtle.digest('SHA-256', salted));
-    const suffix = encoder.encode(challenge);
-    input = new Uint8Array(first.length + suffix.length);
-    input.set(first);
-    input.set(suffix, first.length);
-    return new Uint8Array(await crypto.subtle.digest('SHA-256', input));
+    return await challengeFromHash(first, challenge);
   } finally {
-    sodium.memzero(salted);
-    if (first) sodium.memzero(first);
-    if (input) sodium.memzero(input);
+    sodium.memzero(first);
   }
 }

@@ -39,6 +39,15 @@ jest.mock('../core/session', () => ({
       mockConnect(...args);
       mockEvents.state('connecting');
     }
+    authenticationForFiles() {
+      return undefined;
+    }
+    setReadOnly() {
+      return true;
+    }
+    setViewOptions() {
+      return true;
+    }
     submitPassword = mockPassword;
     sendInput = mockInput;
     sendClipboard = mockClipboard;
@@ -473,4 +482,47 @@ test('剪贴板上下文只接受当前会话递增代次，旧PNG转换不跨�
       clipboardGeneration: 3,
     }),
   );
+});
+
+test('Worker 只读挡住绕过 DOM 的输入、文本和粘贴，过期代次不能修改', async () => {
+  await boot();
+  connect(1);
+  mockEvents.state('connected');
+  mockEvents.message({
+    videoFrame: { display: 0, vp9s: { frames: [] } },
+  } as Parameters<SessionEvents['message']>[0]);
+  mockOutput(frame());
+  send({ type: 'read-only', generation: 1, enabled: true });
+  send({
+    type: 'input',
+    generation: 1,
+    displayGeneration: 0,
+    input: { keyEvent: { seq: 'blocked', press: true } },
+  });
+  send({ type: 'text', generation: 1, displayGeneration: 0, text: 'blocked' });
+  send({
+    type: 'paste',
+    generation: 1,
+    displayGeneration: 0,
+    content: { text: 'blocked' },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  expect(mockInput).not.toHaveBeenCalled();
+  expect(mockClipboard).not.toHaveBeenCalled();
+  send({ type: 'read-only', generation: 0, enabled: false });
+  send({
+    type: 'input',
+    generation: 1,
+    displayGeneration: 0,
+    input: { keyEvent: { chr: 65, press: true } },
+  });
+  expect(mockInput).not.toHaveBeenCalled();
+  send({ type: 'read-only', generation: 1, enabled: false });
+  send({
+    type: 'input',
+    generation: 1,
+    displayGeneration: 0,
+    input: { keyEvent: { chr: 65, press: true } },
+  });
+  expect(mockInput).toHaveBeenCalledTimes(1);
 });

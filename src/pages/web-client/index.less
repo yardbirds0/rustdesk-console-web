@@ -717,6 +717,7 @@
   font-size: 12px;
   text-align: center;
   > :global(.anticon) {
+    justify-self: center;
     font-size: 25px;
     opacity: 0.5;
   }
@@ -1073,7 +1074,7 @@
   z-index: 40;
   display: flex;
   flex-direction: column;
-  width: 760px;
+  width: 1060px;
   max-width: calc(100% - 24px);
   min-height: 180px;
   max-height: calc(100% - 100px);
@@ -1342,5 +1343,262 @@
   }
   .toolbarSeparator {
     margin: 0 2px;
+  }
+}
+
+.filePicker,
+.fileDialogBody,
+.fileList,
+.toolbarPopover {
+  scrollbar-width: thin;
+  scrollbar-color: var(--wc-border) var(--wc-bg);
+}
+.fileFallback {
+  width: 100%;
+  color: var(--wc-muted);
+  summary {
+    width: max-content;
+    max-width: 100%;
+    font-size: 11px;
+    cursor: pointer;
+    &:focus-visible {
+      outline: 2px solid var(--wc-accent);
+      outline-offset: 2px;
+    }
+  }
+}
+.fileFallbackActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+/* 双栏文件窗口保持独立浮层；窄屏改为上下两栏。 */
+.filePanes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr);
+  gap: 10px;
+}
+.filePane {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--wc-border);
+  border-radius: 8px;
+}
+.filePaneHeading {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 42px;
+  padding: 8px 10px;
+  font-size: 12px;
+  background: var(--wc-soft);
+  > span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--wc-muted);
+    font-size: 11px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  :global(.ant-btn) {
+    font-size: 11px;
+  }
+}
+.filePane .fileNavigation {
+  gap: 4px;
+  margin: 8px;
+  :global(.ant-btn) {
+    padding: 0 8px;
+  }
+}
+.filePane .fileList {
+  height: min(32dvh, 330px);
+  min-height: 200px;
+  overflow: auto;
+  border: 0;
+  border-top: 1px solid var(--wc-border);
+  border-bottom: 1px solid var(--wc-border);
+  border-radius: 0;
+}
+.filePane .fileColumns,
+.filePane .fileRow {
+  grid-template-columns: minmax(0, 1fr) 70px;
+  gap: 8px;
+}
+.filePaneFooter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px;
+  > span {
+    flex: 1 1 100%;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--wc-muted);
+    font-size: 11px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  :global(.ant-btn),
+  .uploadField {
+    font-size: 11px;
+  }
+  .uploadField {
+    min-height: 28px;
+    padding: 3px 8px;
+    background: var(--wc-bg);
+    border: 1px solid var(--wc-border);
+    border-radius: 6px;
+  }
+}
+.fileDirections {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+  :global(.ant-btn) {
+    padding: 0;
+  }
+}
+.fileStatusBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 8px 2px 0;
+  color: var(--wc-muted);
+  font-size: 11px;
+  border-top: 1px solid var(--wc-border);
+  progress {
+    flex: 1;
+    min-width: 90px;
+    height: 5px;
+    accent-color: var(--wc-accent);
+  }
+  small {
+    white-space: nowrap;
+  }
+  .fileProgressName {
+    max-width: 34%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+.localFileError {
+  display: block;
+  padding: 8px;
+  color: #d4380d;
+  font-size: 11px;
+}
+.fileAuthentication {
+  margin-bottom: 12px;
+  padding: 10px;
+  font-size: 12px;
+  background: var(--wc-soft);
+  border: 1px solid var(--wc-border);
+  border-radius: 8px;
+}
+.fileAuthentication .fileAuth {
+  margin: 8px 0 0;
+}
+@media (max-width: 680px) {
+  .filePanes {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .fileDirections {
+    flex-direction: row;
+    :global(.ant-btn) {
+      min-width: 100px;
+      :global(.anticon) {
+        transform: rotate(90deg);
+      }
+    }
+  }
+  .filePane .fileList {
+    height: 140px;
+    min-height: 110px;
+    .emptyFiles {
+      gap: 6px;
+      padding: 16px 10px;
+    }
+  }
+  .fileAuthentication .fileAuth {
+    flex-wrap: wrap;
+    :global(.ant-input-affix-wrapper) {
+      flex-basis: 100%;
+    }
+  }
+  .fileStatusBar .fileProgressName {
+    max-width: 100%;
+  }
+}
+
+.menuRow {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 6px 0;
+  color: var(--wc-text);
+  font-size: 12px;
+  .select {
+    min-width: 116px;
+    max-width: 170px;
+    height: 30px;
+    padding: 3px 8px;
+  }
+}
+.menuSegments {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 0;
+  border: 0;
+  :global(.ant-btn) {
+    flex: 1;
+  }
+  :global(.ant-btn)[aria-pressed='true'] {
+    color: var(--wc-accent);
+    background: var(--wc-accent-bg);
+    border-color: var(--wc-accent);
+  }
+}
+.menuActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+.connectionInfo {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 10px;
+  margin: 0 0 14px;
+  font-size: 12px;
+  dt {
+    color: var(--wc-muted);
+  }
+  dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+.screen[data-view-style='original'] {
+  display: block;
+  overflow: auto;
+  canvas {
+    display: block;
+    margin: auto;
   }
 }

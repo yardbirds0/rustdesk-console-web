@@ -27,6 +27,7 @@ test('菜单初始收起；指针、焦点、打开下拉层或固定时不自�
       connected
       busy={false}
       audio={false}
+      fileAllowed={true}
     >
       <span>content</span>
     </SessionToolbar>,
@@ -61,6 +62,7 @@ test('菜单初始收起；指针、焦点、打开下拉层或固定时不自�
       connected
       busy={false}
       audio={false}
+      fileAllowed={true}
     >
       <span>content</span>
     </SessionToolbar>,

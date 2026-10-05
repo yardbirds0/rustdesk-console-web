@@ -31,6 +31,8 @@ let generation = 0;
 let videoSupported = false;
 let clipboardAllowed = true;
 let keyboardAllowed = true;
+let fileAllowed = true;
+let readOnly = false;
 let peerPlatform = '';
 let imageBusy = false;
 let imageEpoch = 0;
@@ -68,6 +70,7 @@ function stopFiles() {
 function connectFiles(next: number) {
   if (
     !desktopConnected ||
+    !fileAllowed ||
     !connection ||
     !Number.isSafeInteger(next) ||
     next <= fileGeneration
@@ -120,7 +123,11 @@ function connectFiles(next: number) {
   );
   fileSession = native;
   fileTransfer = transfer;
-  void native.connect(connection.profile, connection.id);
+  void native.connect(
+    connection.profile,
+    connection.id,
+    session.authenticationForFiles(),
+  );
 }
 
 let audioEnabled = false;
@@ -180,6 +187,8 @@ const session = new RemoteSession({
   permissions: (permissions) => {
     clipboardAllowed = permissions.clipboard;
     keyboardAllowed = permissions.keyboard;
+    fileAllowed = permissions.file;
+    if (!fileAllowed) stopFiles();
     if (!clipboardAllowed || !keyboardAllowed) paste.cancel();
     if (!clipboardAllowed) ++imageEpoch;
     audioAllowed = permissions.audio;
@@ -357,6 +366,8 @@ globalThis.onmessage = (event: MessageEvent<Command>) => {
     ++imageEpoch;
     clipboardAllowed = true;
     keyboardAllowed = true;
+    fileAllowed = true;
+    readOnly = false;
     peerPlatform = '';
     audioAllowed = true;
     audioEnabled = false;
@@ -410,6 +421,7 @@ globalThis.onmessage = (event: MessageEvent<Command>) => {
         inputReady &&
         !awaitingDisplay &&
         keyboardAllowed &&
+        !readOnly &&
         clipboardAllowed,
       /mac/i.test(peerPlatform),
     );
@@ -449,6 +461,7 @@ globalThis.onmessage = (event: MessageEvent<Command>) => {
     });
   } else if (
     command.type === 'input' &&
+    !readOnly &&
     !awaitingDisplay &&
     inputReady &&
     command.displayGeneration === displayGeneration
@@ -462,7 +475,13 @@ globalThis.onmessage = (event: MessageEvent<Command>) => {
     )
       paste.cancel();
     session.sendInput(command.input);
-  } else if (command.type === 'image')
+  } else if (command.type === 'read-only') {
+    if (typeof command.enabled !== 'boolean') return;
+    paste.cancel();
+    if (session.setReadOnly(command.enabled)) readOnly = command.enabled;
+  } else if (command.type === 'view-options')
+    session.setViewOptions(command.options);
+  else if (command.type === 'image')
     void convertImage(
       { content: command.bytes, format: hbb.ClipboardFormat.ImagePng },
       true,
@@ -482,7 +501,11 @@ globalThis.onmessage = (event: MessageEvent<Command>) => {
       if (command.text.length > MAX_TEXT_BYTES) throw new Error();
       const clipboard = encodeText(command.text);
       if (command.type === 'clipboard') session.sendClipboard(clipboard);
-      else if (inputReady && command.displayGeneration === displayGeneration)
+      else if (
+        !readOnly &&
+        inputReady &&
+        command.displayGeneration === displayGeneration
+      )
         session.sendInput({ keyEvent: { seq: command.text, press: true } });
     } catch {
       post({ type: 'warning', code: 'clipboard' });

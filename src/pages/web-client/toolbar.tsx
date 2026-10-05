@@ -11,9 +11,10 @@ import {
   CompressOutlined,
   DisconnectOutlined,
   MinusOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import styles from './index.less';
-export type ToolName = 'display' | 'input' | 'audio';
+export type ToolName = 'display' | 'input' | 'audio' | 'info';
 type Text = (key: string, fallback: string) => string;
 export function SessionToolbar({
   tool,
@@ -25,6 +26,7 @@ export function SessionToolbar({
   connected,
   busy,
   audio,
+  fileAllowed,
   text,
   children,
 }: {
@@ -37,6 +39,7 @@ export function SessionToolbar({
   connected: boolean;
   busy: boolean;
   audio: boolean;
+  fileAllowed: boolean;
   text: Text;
   children: React.ReactNode;
 }) {
@@ -193,7 +196,7 @@ export function SessionToolbar({
             <FolderOpenOutlined />,
             onFiles,
             false,
-            !connected,
+            !connected || !fileAllowed,
             busy && <i className={styles.toolbarActivity} />,
           )}
           {button(
@@ -201,6 +204,13 @@ export function SessionToolbar({
             <SoundOutlined />,
             () => onSelect(tool === 'audio' ? undefined : 'audio'),
             tool === 'audio' || audio,
+            !connected,
+          )}
+          {button(
+            text('connectionInfo', 'Connection information'),
+            <InfoCircleOutlined />,
+            () => onSelect(tool === 'info' ? undefined : 'info'),
+            tool === 'info',
             !connected,
           )}
           <span className={styles.toolbarSeparator} />
@@ -312,7 +322,7 @@ export function FileDialog({
         }}
       >
         <span id="web-client-file-title">
-          <FolderOpenOutlined /> {text('remoteFiles', 'Remote files')}{' '}
+          <FolderOpenOutlined /> {text('files', 'File transfer')}{' '}
           <small>{target}</small>
         </span>
         <button

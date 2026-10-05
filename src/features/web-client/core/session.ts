@@ -1,10 +1,12 @@
+import { util } from 'protobufjs/minimal';
 import { hbb } from '../protocol';
 import {
   createKeyExchange,
   cryptoReady,
   decodeServerKey,
   type KxVersion,
-  passwordChallenge,
+  derivePasswordHash,
+  challengeFromHash,
   verifyIdentity,
 } from './crypto';
 import { DISPLAY_LIMITS, validDisplay } from './display';
@@ -39,8 +41,43 @@ export interface SessionPermissions {
   audio: boolean;
   file: boolean;
 }
+export interface ViewOptions {
+  quality: 'low' | 'balanced' | 'best';
+  fps: number;
+  remoteCursor: boolean;
+}
 
 const MAX_HELD_KEYS = 256;
+
+// 只在 Worker 的桌面/文件会话之间移交，不得发布到页面或持久化。
+export interface FileAuthentication {
+  profile: ServerProfile;
+  targetId: string;
+  sessionId: NonNullable<hbb.ILoginRequest['sessionId']>;
+  salt: string;
+  passwordH1: Uint8Array;
+}
+function randomSessionId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  // uint64 使用 protobuf 的 Long，禁止将完整随机值转成 number。
+  let value = 0n;
+  for (const byte of bytes) value = (value << 8n) | BigInt(byte);
+  if (!util.Long) throw new SessionError('protocol');
+  value ||= 1n;
+  // protobuf 的 util 类型只声明 low/high；运行时为生成协议所用的同一 Long。
+  return new util.Long(
+    Number(value & 0xffffffffn) | 0,
+    Number(value >> 32n) | 0,
+    true,
+  ) as NonNullable<hbb.ILoginRequest['sessionId']>;
+}
+function sameProfile(a: ServerProfile, b: ServerProfile) {
+  return (
+    a.idServerUrl === b.idServerUrl &&
+    a.relayServerUrl === b.relayServerUrl &&
+    a.serverPublicKey === b.serverPublicKey
+  );
+}
 
 export class RemoteSession {
   private generation = 0;
@@ -48,6 +85,13 @@ export class RemoteSession {
   private transport?: BinaryTransport;
   private challenge?: { salt: string; challenge: string };
   private targetId = '';
+  private profile?: ServerProfile;
+  private sessionId?: NonNullable<hbb.ILoginRequest['sessionId']>;
+  private passwordCandidate?: { salt: string; passwordH1: Uint8Array };
+  private reuse?: FileAuthentication;
+  private credentialEpoch = 0;
+  private readOnly = false;
+  private sasEnabled = false;
   private attempts = 0;
   private authenticationRequest = 0;
   private authTimer?: ReturnType<typeof setTimeout>;
@@ -76,8 +120,13 @@ export class RemoteSession {
     if (generation !== this.generation) throw new SessionError('cancelled');
   }
 
-  async connect(input: ServerProfile, rawId: string) {
+  async connect(
+    input: ServerProfile,
+    rawId: string,
+    reuse?: FileAuthentication,
+  ) {
     this.dispose();
+    this.reuse = reuse;
     const generation = this.generation;
     this.transition('connecting');
     this.permissions = {
@@ -92,6 +141,17 @@ export class RemoteSession {
       this.current(generation);
       const profile = validateProfile(input);
       this.targetId = normalizeTargetId(rawId);
+      this.profile = profile;
+      if (
+        this.reuse &&
+        (this.kind !== 'file' ||
+          this.reuse.targetId !== this.targetId ||
+          !sameProfile(this.reuse.profile, profile) ||
+          this.reuse.passwordH1.length !== 32)
+      ) {
+        this.clearReuse();
+      }
+      this.sessionId = this.reuse?.sessionId ?? randomSessionId();
       const rendezvous = new BinaryTransport(this.socketFactory);
       this.transport = rendezvous;
       await rendezvous.open(profile.idServerUrl);
@@ -190,11 +250,19 @@ export class RemoteSession {
           )
             throw new SessionError('protocol');
           this.challenge = { salt, challenge };
-          await this.submitPassword('');
+          if (this.reuse && this.reuse.salt === salt)
+            await this.submitAuthentication(undefined, true);
+          else {
+            this.clearReuse();
+            await this.submitPassword('');
+          }
         } else if (message.loginResponse) {
           if (this.state === 'connected') throw new SessionError('protocol');
           const response = message.loginResponse;
           if (response.error) {
+            ++this.authenticationRequest;
+            this.clearPassword();
+            this.clearReuse();
             if (response.error === 'Wrong Password') {
               this.transition('authenticating');
               this.events.error('password');
@@ -220,7 +288,10 @@ export class RemoteSession {
               throw new SessionError('protocol');
             clearTimeout(this.authTimer);
             this.displays = response.peerInfo.displays || [];
+            this.sasEnabled = !!response.peerInfo.sasEnabled;
             this.challenge = undefined;
+            this.clearReuse();
+            if (this.kind === 'file') this.clearPassword();
             this.transition('connected');
             this.events.permissions({ ...this.permissions });
             await this.events.message(message);
@@ -253,8 +324,14 @@ export class RemoteSession {
             this.permissions.clipboard = !!info.enabled;
           if (info.permission === hbb.PermissionInfo.Permission.Audio)
             this.permissions.audio = !!info.enabled;
-          if (info.permission === hbb.PermissionInfo.Permission.File)
+          if (info.permission === hbb.PermissionInfo.Permission.File) {
             this.permissions.file = !!info.enabled;
+            if (!this.permissions.file) {
+              ++this.credentialEpoch;
+              this.clearPassword();
+              this.clearReuse();
+            }
+          }
           this.events.permissions({ ...this.permissions });
         } else if (this.state === 'connected') {
           if (message.peerInfo) {
@@ -269,6 +346,7 @@ export class RemoteSession {
             )
               throw new SessionError('protocol');
             this.displays = peer.displays;
+            this.sasEnabled = !!peer.sasEnabled;
           }
           if (
             message.misc?.switchDisplay &&
@@ -294,64 +372,112 @@ export class RemoteSession {
     }
   }
 
+  // 返回独立副本，文件会话取得所有权；桌面成功只是允许尝试新挑战。
+  authenticationForFiles(): FileAuthentication | undefined {
+    if (
+      this.kind !== 'desktop' ||
+      this.state !== 'connected' ||
+      !this.permissions.file ||
+      !this.profile ||
+      !this.sessionId ||
+      !this.passwordCandidate
+    )
+      return;
+    return {
+      profile: { ...this.profile },
+      targetId: this.targetId,
+      sessionId: this.sessionId,
+      salt: this.passwordCandidate.salt,
+      passwordH1: this.passwordCandidate.passwordH1.slice(),
+    };
+  }
+  private clearPassword() {
+    this.passwordCandidate?.passwordH1.fill(0);
+    this.passwordCandidate = undefined;
+  }
+  private clearReuse() {
+    this.reuse?.passwordH1.fill(0);
+    this.reuse = undefined;
+  }
   async submitPassword(password: string) {
+    return this.submitAuthentication(password, false);
+  }
+  private async submitAuthentication(
+    password: string | undefined,
+    automatic: boolean,
+  ) {
     if (
       !this.challenge ||
       !['authenticating', 'awaitingApproval'].includes(this.state)
     )
       return;
-    if (password.length > 4096 || ++this.attempts > 5) {
+    if ((password?.length || 0) > 4096 || ++this.attempts > 5) {
       this.fail('denied');
       return;
     }
     const generation = this.generation;
     const request = ++this.authenticationRequest;
     const hash = this.challenge;
+    const credentialEpoch = this.credentialEpoch;
+    this.clearPassword();
     this.transition('authenticating');
+    let first: Uint8Array | undefined;
+    let response: Uint8Array | undefined;
     try {
-      const response = password
-        ? await passwordChallenge(password, hash.salt, hash.challenge)
+      first = automatic
+        ? this.reuse?.passwordH1.slice()
+        : password
+        ? await derivePasswordHash(password, hash.salt)
+        : undefined;
+      response = first
+        ? await challengeFromHash(first, hash.challenge)
         : new Uint8Array();
-      try {
-        // Local approval, reconnect or a newer submission can win while hashing.
-        if (
-          generation !== this.generation ||
-          request !== this.authenticationRequest ||
-          hash !== this.challenge ||
-          this.state === 'connected'
-        )
-          return;
-        this.send({
-          loginRequest: {
-            username: this.targetId,
-            password: response,
-            myId: 'console-web',
-            myName: 'Console Web Client',
-            myPlatform: 'Web',
-            version: '1.4.9',
-            videoAckRequired: this.kind === 'desktop',
-            fileTransfer:
-              this.kind === 'file' ? { dir: '', showHidden: false } : undefined,
-            option:
-              this.kind === 'file'
-                ? undefined
-                : {
-                    disableAudio: hbb.OptionMessage.BoolOption.Yes,
-                    enableFileTransfer: hbb.OptionMessage.BoolOption.No,
-                    imageQuality: hbb.ImageQuality.Balanced,
-                    showRemoteCursor: hbb.OptionMessage.BoolOption.Yes,
-                    customFps: 30,
-                    supportedDecoding: {
-                      abilityVp9: 1,
-                      prefer: hbb.SupportedDecoding.PreferCodec.VP9,
-                      preferChroma: hbb.Chroma.I420,
-                    },
+      if (
+        generation !== this.generation ||
+        request !== this.authenticationRequest ||
+        hash !== this.challenge ||
+        this.state === 'connected'
+      )
+        return;
+      this.send({
+        loginRequest: {
+          username: this.targetId,
+          password: response,
+          myId: 'console-web',
+          myName: 'Console Web Client',
+          myPlatform: 'Web',
+          sessionId: this.sessionId,
+          version: '1.4.9',
+          videoAckRequired: this.kind === 'desktop',
+          fileTransfer:
+            this.kind === 'file' ? { dir: '', showHidden: false } : undefined,
+          option:
+            this.kind === 'file'
+              ? undefined
+              : {
+                  disableAudio: hbb.OptionMessage.BoolOption.Yes,
+                  enableFileTransfer: hbb.OptionMessage.BoolOption.No,
+                  imageQuality: hbb.ImageQuality.Balanced,
+                  showRemoteCursor: hbb.OptionMessage.BoolOption.Yes,
+                  customFps: 30,
+                  supportedDecoding: {
+                    abilityVp9: 1,
+                    prefer: hbb.SupportedDecoding.PreferCodec.VP9,
+                    preferChroma: hbb.Chroma.I420,
                   },
-          },
-        });
-      } finally {
-        response.fill(0);
+                },
+        },
+      });
+      if (
+        first &&
+        this.kind === 'desktop' &&
+        this.permissions.file &&
+        credentialEpoch === this.credentialEpoch
+      ) {
+        this.passwordCandidate = { salt: hash.salt, passwordH1: first };
+        first = undefined;
       }
+      this.clearReuse();
       this.transition('awaitingApproval');
       this.armAuthenticationTimeout();
     } catch (error) {
@@ -360,6 +486,9 @@ export class RemoteSession {
         request === this.authenticationRequest
       )
         this.fail(error instanceof SessionError ? error.code : 'protocol');
+    } finally {
+      first?.fill(0);
+      response?.fill(0);
     }
   }
 
@@ -375,12 +504,18 @@ export class RemoteSession {
     if (
       this.kind !== 'desktop' ||
       this.state !== 'connected' ||
-      !this.permissions.keyboard
+      !this.permissions.keyboard ||
+      this.readOnly ||
+      (input.keyEvent?.controlKey === hbb.ControlKey.CtrlAltDel &&
+        !this.sasEnabled)
     )
       return false;
     const key = input.keyEvent;
+    const functionKey =
+      key?.controlKey === hbb.ControlKey.CtrlAltDel ||
+      key?.controlKey === hbb.ControlKey.LockScreen;
     const keyId =
-      key && !key.press
+      key && !key.press && !functionKey
         ? key.controlKey != null
           ? `control:${key.mode ?? hbb.KeyboardMode.Legacy}:${key.controlKey}`
           : key.chr != null
@@ -502,6 +637,51 @@ export class RemoteSession {
     });
   }
 
+  setReadOnly(enabled: boolean) {
+    if (
+      this.kind !== 'desktop' ||
+      this.state !== 'connected' ||
+      typeof enabled !== 'boolean'
+    )
+      return false;
+    if (enabled && !this.readOnly && this.permissions.keyboard) {
+      for (const release of this.takeInputReleases())
+        if (!this.sendConnected(release)) return false;
+    }
+    this.readOnly = enabled;
+    return true;
+  }
+
+  setViewOptions(options: ViewOptions) {
+    if (
+      this.kind !== 'desktop' ||
+      this.state !== 'connected' ||
+      !options ||
+      !['low', 'balanced', 'best'].includes(options.quality) ||
+      !Number.isInteger(options.fps) ||
+      options.fps < 5 ||
+      options.fps > 60 ||
+      typeof options.remoteCursor !== 'boolean'
+    )
+      return false;
+    const quality = {
+      low: hbb.ImageQuality.Low,
+      balanced: hbb.ImageQuality.Balanced,
+      best: hbb.ImageQuality.Best,
+    };
+    return this.sendConnected({
+      misc: {
+        option: {
+          imageQuality: quality[options.quality],
+          customFps: options.fps,
+          showRemoteCursor: options.remoteCursor
+            ? hbb.OptionMessage.BoolOption.Yes
+            : hbb.OptionMessage.BoolOption.No,
+        },
+      },
+    });
+  }
+
   async sendFile(
     message: { fileAction?: hbb.IFileAction; fileResponse?: hbb.IFileResponse },
     current = () => true,
@@ -553,6 +733,7 @@ export class RemoteSession {
   dispose() {
     ++this.generation;
     ++this.authenticationRequest;
+    ++this.credentialEpoch;
     clearTimeout(this.authTimer);
     const releases = this.takeInputReleases();
     if (this.state === 'connected' && this.permissions.keyboard) {
@@ -565,6 +746,12 @@ export class RemoteSession {
     this.transport?.close();
     this.transport = undefined;
     this.challenge = undefined;
+    this.clearPassword();
+    this.clearReuse();
+    this.profile = undefined;
+    this.sessionId = undefined;
+    this.readOnly = false;
+    this.sasEnabled = false;
     this.targetId = '';
     this.displays = [];
     this.state = 'closed';
