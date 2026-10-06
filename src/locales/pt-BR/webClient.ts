@@ -1,4 +1,16 @@
 export default {
+  'webClient.qualityShow': 'Mostrar monitor de qualidade',
+  'webClient.qualityMonitor': 'Monitor de qualidade',
+  'webClient.qualityClose': 'Fechar monitor de qualidade',
+  'webClient.qualityFps': 'Taxa de quadros',
+  'webClient.qualityBitrate': 'Taxa de bits de vídeo',
+  'webClient.qualityDelay': 'Ida e volta da rede',
+  'webClient.qualityResolution': 'Resolução',
+  'webClient.qualityCodec': 'Codec',
+  'webClient.clipboardSync': 'Sincronizar área de transferência',
+  'webClient.reverseWheel': 'Inverter roda do mouse',
+  'webClient.swapButtons': 'Trocar botões esquerdo e direito',
+  'webClient.swapControlCommand': 'Trocar Ctrl/Command',
   'webClient.legacyEncryption':
     'O dispositivo remoto usa um protocolo de criptografia antigo com riscos de segurança conhecidos. Atualize o cliente remoto quando possível.',
   'webClient.open': 'Conectar no navegador',

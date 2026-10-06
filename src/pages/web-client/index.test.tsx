@@ -355,10 +355,12 @@ test('断开和重连拒绝旧剪贴板与帧，并移除剪贴板中转界面',
     state: 'connected',
     generation: worker.generation,
   });
-  worker.emit({
-    type: 'clipboard',
-    text: 'current text',
-    generation: worker.generation,
+  await act(async () => {
+    worker.emit({
+      type: 'clipboard',
+      text: 'current text',
+      generation: worker.generation,
+    });
   });
   expect(navigator.clipboard.writeText).toHaveBeenCalledWith('current text');
   expect(screen.queryByLabelText('Remote clipboard text')).toBeNull();
@@ -1326,10 +1328,12 @@ test('窗口失焦后再聚焦也拒绝旧Worker剪贴板代次和图片', async
   });
   expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
   expect(navigator.clipboard.write).not.toHaveBeenCalled();
-  worker.emit({
-    type: 'clipboard',
-    text: 'fresh',
-    generation: worker.generation,
+  await act(async () => {
+    worker.emit({
+      type: 'clipboard',
+      text: 'fresh',
+      generation: worker.generation,
+    });
   });
   expect(navigator.clipboard.writeText).toHaveBeenCalledWith('fresh');
 });
@@ -1698,4 +1702,227 @@ test('文件表头固定在条目滚动区之外；普通传输在两栏外且�
       command: expect.objectContaining({ type: 'upload', path: 'C:/Loaded' }),
     }),
   );
+});
+
+test('关闭剪贴板同步废弃读取中的PNG、远端重试和旧内容，恢复只接受新代次', async () => {
+  const desktop = await readyDesktop();
+  let finish!: (value: ArrayBuffer) => void;
+  fireEvent.paste(desktop, {
+    clipboardData: {
+      items: [
+        {
+          kind: 'file',
+          type: 'image/png',
+          getAsFile: () => ({
+            size: 2,
+            arrayBuffer: () =>
+              new Promise<ArrayBuffer>((resolve) => {
+                finish = resolve;
+              }),
+          }),
+        },
+      ],
+      getData: () => '',
+    },
+  });
+  const oldEpoch = Number(
+    worker.postMessage.mock.calls
+      .filter(([m]) => m.type === 'clipboard-context')
+      .at(-1)?.[0].clipboardGeneration,
+  );
+  openTool('Display');
+  fireEvent.click(screen.getByRole('switch', { name: 'Clipboard sync' }));
+  expect(worker.postMessage).toHaveBeenCalledWith(
+    expect.objectContaining({
+      type: 'clipboard-context',
+      enabled: false,
+    }),
+  );
+  await act(async () => finish(new Uint8Array([1, 2]).buffer));
+  expect(
+    worker.postMessage.mock.calls.filter(([m]) => m.type === 'paste'),
+  ).toHaveLength(0);
+  worker.emit({
+    type: 'clipboard',
+    text: 'blocked',
+    generation: worker.generation,
+  });
+  expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('switch', { name: 'Clipboard sync' }));
+  worker.emit({
+    type: 'clipboard',
+    text: 'old',
+    clipboardGeneration: oldEpoch,
+    generation: worker.generation,
+  });
+  expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+  worker.emit({
+    type: 'clipboard',
+    text: 'fresh',
+    generation: worker.generation,
+  });
+  await waitFor(() =>
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('fresh'),
+  );
+  worker.emit({
+    type: 'permissions',
+    permissions: { keyboard: true, clipboard: false, audio: true, file: true },
+    generation: worker.generation,
+  });
+  expect(
+    (
+      screen.getByRole('switch', {
+        name: 'Clipboard sync',
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(true);
+});
+
+test('键鼠映射切换先按原身份释放软修饰键，新按键映射且只读禁用设置', async () => {
+  await readyDesktop();
+  openTool('Keyboard');
+  fireEvent.click(screen.getByRole('switch', { name: 'Swap Ctrl/Command' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Control' }));
+  expect(worker.postMessage).toHaveBeenCalledWith(
+    expect.objectContaining({
+      type: 'input',
+      input: {
+        keyEvent: {
+          controlKey: hbb.ControlKey.Meta,
+          down: true,
+          modifiers: undefined,
+        },
+      },
+    }),
+  );
+  fireEvent.click(screen.getByRole('switch', { name: 'Swap Ctrl/Command' }));
+  const keys = worker.postMessage.mock.calls.filter(
+    ([m]) => m.type === 'input',
+  );
+  expect(keys.at(-1)?.[0].input).toEqual({
+    keyEvent: {
+      controlKey: hbb.ControlKey.Meta,
+      down: false,
+      modifiers: undefined,
+    },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Control' }));
+  expect(worker.postMessage.mock.calls.at(-1)?.[0].input).toEqual({
+    keyEvent: {
+      controlKey: hbb.ControlKey.Control,
+      down: true,
+      modifiers: undefined,
+    },
+  });
+  fireEvent.click(screen.getByRole('switch', { name: 'View only' }));
+  expect(
+    (
+      screen.getByRole('switch', {
+        name: 'Reverse mouse wheel',
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(true);
+});
+
+test('监测只在可见且连接时按秒请求，绘制数独立于解码数，关闭停止轮询', async () => {
+  jest.useFakeTimers();
+  try {
+    await readyDesktop();
+    openTool('Display');
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Show quality monitor' }),
+    );
+    const request = () =>
+      worker.postMessage.mock.calls
+        .filter(([m]) => m.type === 'metrics')
+        .at(-1)?.[0].request;
+    const metrics = () =>
+      worker.emit({
+        type: 'metrics',
+        generation: worker.generation,
+        request: request(),
+        displayGeneration: 0,
+        decoded: 900,
+        videoBytes: 1000,
+        delay: 42,
+      });
+    metrics();
+    expect(screen.getByLabelText('Quality monitor')).toBeDefined();
+    expect(screen.getByText('42 ms')).toBeDefined();
+    act(() => jest.advanceTimersByTime(1000));
+    worker.emit({
+      type: 'frame',
+      generation: worker.generation,
+      displayGeneration: 0,
+      frame: { displayWidth: 800, displayHeight: 600, close: jest.fn() },
+    });
+    worker.emit({
+      type: 'metrics',
+      generation: worker.generation,
+      request: request(),
+      displayGeneration: 0,
+      decoded: 9900,
+      videoBytes: 126000,
+      delay: 42,
+    });
+    expect(screen.getByText('1.0 FPS')).toBeDefined();
+    expect(screen.getByText('1.00 Mbps')).toBeDefined();
+    const count = worker.postMessage.mock.calls.filter(
+      ([m]) => m.type === 'metrics',
+    ).length;
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      value: true,
+    });
+    fireEvent(document, new Event('visibilitychange'));
+    act(() => jest.advanceTimersByTime(3000));
+    expect(
+      worker.postMessage.mock.calls.filter(([m]) => m.type === 'metrics'),
+    ).toHaveLength(count);
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      value: false,
+    });
+    fireEvent(document, new Event('visibilitychange'));
+    metrics();
+    expect(screen.queryByText('1.0 FPS')).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close quality monitor' }),
+    );
+    const closed = worker.postMessage.mock.calls.filter(
+      ([m]) => m.type === 'metrics',
+    ).length;
+    act(() => jest.advanceTimersByTime(3000));
+    expect(
+      worker.postMessage.mock.calls.filter(([m]) => m.type === 'metrics'),
+    ).toHaveLength(closed);
+    expect(screen.queryByLabelText('Quality monitor')).toBeNull();
+  } finally {
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      value: false,
+    });
+    cleanup();
+    jest.useRealTimers();
+  }
+});
+
+test('配置清理Worker时同时停止质量轮询，不留下空计时器', async () => {
+  jest.useFakeTimers();
+  try {
+    const view = await start();
+    openTool('Display');
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Show quality monitor' }),
+    );
+    expect(jest.getTimerCount()).toBeGreaterThan(0);
+    mockConfiguration = { enabled: false };
+    view.rerender(React.createElement(WebClientPage));
+    act(() => jest.advanceTimersByTime(3000));
+    expect(screen.queryByLabelText('Quality monitor')).toBeNull();
+    expect(jest.getTimerCount()).toBe(0);
+  } finally {
+    cleanup();
+    jest.useRealTimers();
+  }
 });

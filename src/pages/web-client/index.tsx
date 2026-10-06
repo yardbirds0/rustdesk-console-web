@@ -39,6 +39,16 @@ import {
 import { FilePanel, type FilePanelHandle, type FilePanelStatus } from './files';
 import { DevicePicker } from './devices';
 import { SessionToolbar, FileDialog, type ToolName } from './toolbar';
+import { QualityMonitor } from './quality-monitor';
+import {
+  QualitySampler,
+  type QualityReading,
+} from '@/features/web-client/media/quality-metrics';
+import {
+  DEFAULT_INPUT_MAPPING,
+  mapInput,
+  type InputMapping,
+} from '@/features/web-client/input/mapping';
 import { LegacyEncryptionNotice } from './legacy-notice';
 import {
   RemoteClipboardSync,
@@ -81,6 +91,19 @@ export default function WebClientPage() {
   const [error, setError] = useState('');
   const [clipboardFallback, setClipboardFallback] = useState(false);
   const [pasteStatus, setPasteStatus] = useState('');
+  const [clipboardEnabled, setClipboardEnabled] = useState(true);
+  const clipboardEnabledRef = useRef(true);
+  const [inputMapping, setInputMapping] = useState<InputMapping>(
+    DEFAULT_INPUT_MAPPING,
+  );
+  const inputMappingRef = useRef(DEFAULT_INPUT_MAPPING);
+  const [qualityEnabled, setQualityEnabled] = useState(false);
+  const qualityEnabledRef = useRef(false);
+  qualityEnabledRef.current = qualityEnabled;
+  const [qualityReading, setQualityReading] = useState<QualityReading>({});
+  const qualitySampler = useRef(new QualitySampler());
+  const qualityRequest = useRef(0);
+  const drawnFrames = useRef(0);
   const pasteEpoch = useRef(0);
   const readingPaste = useRef(false);
   const [display, setDisplay] = useState<RemoteDisplay>();
@@ -122,6 +145,9 @@ export default function WebClientPage() {
   const post = (message: SessionCommand) =>
     worker.current?.postMessage({
       ...message,
+      ...(message.type === 'input'
+        ? { input: mapInput(message.input, inputMappingRef.current) }
+        : {}),
       generation: generation.current,
       displayGeneration: displayEpoch.current,
     });
@@ -138,7 +164,7 @@ export default function WebClientPage() {
   clipboardContext.current = {
     enabled: !!configuration?.enabled,
     connected,
-    allowed: permissions.clipboard,
+    allowed: permissions.clipboard && clipboardEnabledRef.current,
   };
   const clipboardSync = useRef<RemoteClipboardSync | undefined>(undefined);
   if (!clipboardSync.current)
@@ -157,6 +183,7 @@ export default function WebClientPage() {
     post({
       type: 'clipboard-context',
       clipboardGeneration: ++clipboardEpoch.current,
+      enabled: clipboardEnabledRef.current,
     });
   };
 
@@ -178,6 +205,11 @@ export default function WebClientPage() {
     modifierRef.current = [];
     setHeldModifiers([]);
   };
+  const resetQuality = () => {
+    ++qualityRequest.current;
+    qualitySampler.current.reset();
+    setQualityReading({});
+  };
   const clearDisplay = () => {
     const element = canvas.current;
     if (element) {
@@ -187,6 +219,7 @@ export default function WebClientPage() {
     if (pointer.current) pointer.current.style.display = 'none';
   };
   const disconnect = () => {
+    resetQuality();
     cancelPaste();
     stopAudio();
     files.current?.dispose();
@@ -281,7 +314,10 @@ export default function WebClientPage() {
           } else if (message.type === 'state') {
             acceptsFrames = message.state === 'connected';
             clipboardContext.current.connected = message.state === 'connected';
-            if (message.state !== 'connected') resetClipboard();
+            if (message.state !== 'connected') {
+              resetClipboard();
+              resetQuality();
+            }
             setState(message.state);
             if (message.state === 'failed' || message.state === 'closed') {
               stopAudio();
@@ -309,7 +345,8 @@ export default function WebClientPage() {
             if (message.code === 'audio') stopAudio();
             setError(message.code);
           } else if (message.type === 'permissions') {
-            clipboardContext.current.allowed = message.permissions.clipboard;
+            clipboardContext.current.allowed =
+              message.permissions.clipboard && clipboardEnabledRef.current;
             setPermissions(message.permissions);
             if (!message.permissions.keyboard || !message.permissions.clipboard)
               cancelPaste();
@@ -335,6 +372,7 @@ export default function WebClientPage() {
             setSelectedDisplay(message.peer.currentDisplay || 0);
             setDisplayReady(false);
           } else if (message.type === 'display') {
+            resetQuality();
             releaseModifiers();
             displayEpoch.current = message.displayGeneration;
             setSelectedDisplay(message.display.display || 0);
@@ -349,6 +387,21 @@ export default function WebClientPage() {
               height: remote.height || 0,
             };
             setDisplay(geometry);
+          } else if (message.type === 'metrics') {
+            if (
+              qualityEnabledRef.current &&
+              !document.hidden &&
+              acceptsFrames &&
+              message.request === qualityRequest.current &&
+              message.displayGeneration === displayEpoch.current
+            )
+              setQualityReading(
+                qualitySampler.current.sample(
+                  performance.now(),
+                  drawnFrames.current,
+                  message,
+                ),
+              );
           } else if (message.type === 'audio-reset') {
             audioEpoch.current = message.audioGeneration;
             player.current?.clear();
@@ -386,9 +439,11 @@ export default function WebClientPage() {
                   element.width = frame.displayWidth;
                 if (element.height !== frame.displayHeight)
                   element.height = frame.displayHeight;
-                element
-                  .getContext('2d', { alpha: false })
-                  ?.drawImage(frame, 0, 0);
+                const context = element.getContext('2d', { alpha: false });
+                if (context) {
+                  context.drawImage(frame, 0, 0);
+                  ++drawnFrames.current;
+                }
               }
             } finally {
               frame.close();
@@ -522,6 +577,7 @@ export default function WebClientPage() {
     const paste = async (event: ClipboardEvent) => {
       event.preventDefault();
       if (readingPaste.current) return;
+      if (!clipboardEnabledRef.current) return;
       if (!permissions.clipboard || !inputAllowed) {
         setPasteStatus('denied');
         return;
@@ -536,7 +592,9 @@ export default function WebClientPage() {
       const valid = () =>
         epoch === pasteEpoch.current &&
         current === generation.current &&
-        screenEpoch === displayEpoch.current;
+        screenEpoch === displayEpoch.current &&
+        clipboardEnabledRef.current &&
+        clipboardContext.current.allowed;
       readingPaste.current = true;
       try {
         const images = Array.from(clipboard?.items || []).filter(
@@ -596,6 +654,31 @@ export default function WebClientPage() {
     document.addEventListener('visibilitychange', pause);
     return () => document.removeEventListener('visibilitychange', pause);
   }, []);
+  useEffect(() => {
+    if (!qualityEnabled || !connected || !configuration?.enabled) {
+      resetQuality();
+      return;
+    }
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const poll = () =>
+      post({ type: 'metrics', request: ++qualityRequest.current });
+    const visible = () => {
+      clearInterval(timer);
+      timer = undefined;
+      resetQuality();
+      if (!document.hidden) {
+        poll();
+        timer = setInterval(poll, 1000);
+      }
+    };
+    visible();
+    document.addEventListener('visibilitychange', visible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', visible);
+      resetQuality();
+    };
+  }, [qualityEnabled, connected, configuration]);
   const toggleAudio = async () => {
     if (audioEnabled) {
       stopAudio();
@@ -704,6 +787,8 @@ export default function WebClientPage() {
     if (!configuration?.enabled || !ready) return;
     try {
       const target = normalizeTargetId(targetId);
+      resetQuality();
+      drawnFrames.current = 0;
       setId(target);
       cancelPaste();
       resetClipboard();
@@ -740,6 +825,7 @@ export default function WebClientPage() {
       post({
         type: 'clipboard-context',
         clipboardGeneration: clipboardEpoch.current,
+        enabled: clipboardEnabledRef.current,
       });
     } catch {
       setError('configuration');
@@ -801,6 +887,23 @@ export default function WebClientPage() {
     post({ type: 'view-options', options });
     if (!options.remoteCursor && pointer.current)
       pointer.current.style.display = 'none';
+  };
+  const toggleClipboard = (enabled: boolean) => {
+    clipboardEnabledRef.current = enabled;
+    clipboardContext.current.allowed = permissions.clipboard && enabled;
+    cancelPaste();
+    resetClipboard();
+    setClipboardEnabled(enabled);
+  };
+  const updateInputMapping = (change: Partial<InputMapping>) => {
+    cancelPaste();
+    // 先用旧映射释放所有来源的按下状态，再切换；撤权时仍由核心阻止发送。
+    input.current?.release();
+    touch.current?.cancel();
+    releaseModifiers();
+    const next = { ...inputMappingRef.current, ...change };
+    inputMappingRef.current = next;
+    setInputMapping(next);
   };
   const toggleReadOnly = (enabled: boolean) => {
     cancelPaste();
@@ -1179,6 +1282,33 @@ export default function WebClientPage() {
                     }
                   />
                 </div>
+                <div className={styles.menuRow}>
+                  <span>{text('qualityShow', 'Show quality monitor')}</span>
+                  <Switch
+                    size="small"
+                    aria-label={text('qualityShow', 'Show quality monitor')}
+                    checked={qualityEnabled}
+                    onChange={setQualityEnabled}
+                  />
+                </div>
+                <div className={styles.menuRow}>
+                  <span>{text('clipboardSync', 'Clipboard sync')}</span>
+                  <Switch
+                    size="small"
+                    aria-label={text('clipboardSync', 'Clipboard sync')}
+                    checked={clipboardEnabled}
+                    disabled={!permissions.clipboard}
+                    onChange={toggleClipboard}
+                  />
+                </div>
+                {!permissions.clipboard && (
+                  <p className={styles.panelHint}>
+                    {text(
+                      'clipboardDenied',
+                      'Clipboard is disabled by the remote device.',
+                    )}
+                  </p>
+                )}
                 <div className={styles.menuActions}>
                   <Button onClick={() => adjustView(viewStyle)}>
                     {text('zoomReset', 'Reset zoom')}
@@ -1198,6 +1328,28 @@ export default function WebClientPage() {
                     checked={readOnly}
                     onChange={toggleReadOnly}
                   />
+                </div>
+                <div className={styles.mappingSettings}>
+                  {(
+                    [
+                      ['reverseWheel', 'Reverse mouse wheel'],
+                      ['swapButtons', 'Swap left and right mouse buttons'],
+                      ['swapControlCommand', 'Swap Ctrl/Command'],
+                    ] as const
+                  ).map(([key, fallback]) => (
+                    <div className={styles.menuRow} key={key}>
+                      <span>{text(key, fallback)}</span>
+                      <Switch
+                        size="small"
+                        aria-label={text(key, fallback)}
+                        checked={inputMapping[key]}
+                        disabled={!inputAllowed || !displayReady}
+                        onChange={(enabled) =>
+                          updateInputMapping({ [key]: enabled })
+                        }
+                      />
+                    </div>
+                  ))}
                 </div>
                 {!permissions.keyboard && (
                   <p className={styles.panelHint}>
@@ -1521,7 +1673,20 @@ export default function WebClientPage() {
               {noticeControl}
             </div>
           )}
-          {activeSession && clipboardFallback && (
+          {connected && qualityEnabled && (
+            <QualityMonitor
+              reading={qualityReading}
+              display={display}
+              ready={displayReady}
+              onClose={() => {
+                setQualityEnabled(false);
+                resetQuality();
+                canvas.current?.focus({ preventScroll: true });
+              }}
+              text={text}
+            />
+          )}
+          {activeSession && clipboardEnabled && clipboardFallback && (
             <div className={styles.clipboardRetry} role="status">
               <span>
                 {text('clipboardRetryHint', 'Browser blocked clipboard sync.')}

@@ -1,4 +1,16 @@
 export default {
+  'webClient.qualityShow': 'Show quality monitor',
+  'webClient.qualityMonitor': 'Quality monitor',
+  'webClient.qualityClose': 'Close quality monitor',
+  'webClient.qualityFps': 'Frame rate',
+  'webClient.qualityBitrate': 'Video bitrate',
+  'webClient.qualityDelay': 'Network round trip',
+  'webClient.qualityResolution': 'Resolution',
+  'webClient.qualityCodec': 'Codec',
+  'webClient.clipboardSync': 'Clipboard sync',
+  'webClient.reverseWheel': 'Reverse mouse wheel',
+  'webClient.swapButtons': 'Swap left and right mouse buttons',
+  'webClient.swapControlCommand': 'Swap Ctrl/Command',
   'webClient.selectDevice': 'Choose a device',
   'webClient.selectionHint':
     'Enter a device ID, or choose one from the list below.',

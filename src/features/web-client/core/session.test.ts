@@ -1196,3 +1196,71 @@ test('随机 uint64 高位及低位均经 protobuf 无损传递', async () => {
   f.session.disconnect();
   await run;
 });
+
+test('剪贴板设置同时发送原生选项并阻断双向内容，权限仍为独立上限', async () => {
+  const f = await connectedFixture();
+  expect(f.session.setClipboardEnabled(false)).toBe(true);
+  expect(f.clientMessages.at(-1)?.misc?.option?.disableClipboard).toBe(
+    hbb.OptionMessage.BoolOption.Yes,
+  );
+  expect(f.session.sendClipboard({ content: new Uint8Array([1]) })).toBe(false);
+  expect(f.session.sendImage(new Uint8Array([1]))).toBe(false);
+  await expect(f.session.flushClipboard()).rejects.toThrow();
+  const count = f.messages.length;
+  f.send({ clipboard: { content: new Uint8Array([1]) } });
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  expect(f.messages).toHaveLength(count);
+  f.session.setClipboardEnabled(true);
+  expect(f.clientMessages.at(-1)?.misc?.option?.disableClipboard).toBe(
+    hbb.OptionMessage.BoolOption.No,
+  );
+  expect(f.messages).toHaveLength(count);
+  f.send({
+    misc: {
+      permissionInfo: {
+        permission: hbb.PermissionInfo.Permission.Clipboard,
+        enabled: false,
+      },
+    },
+  });
+  await until(() => f.permissions.at(-1)?.clipboard === false);
+  expect(f.session.sendClipboard({ content: new Uint8Array([1]) })).toBe(false);
+  f.session.disconnect();
+  await f.run;
+});
+
+test('统计只计当前屏VP9负载，延迟来自对端上次往返探测，断开清空', async () => {
+  const f = await connectedFixture();
+  f.send({
+    videoFrame: {
+      display: 0,
+      vp9s: {
+        frames: [{ data: new Uint8Array(10) }, { data: new Uint8Array(20) }],
+      },
+    },
+  });
+  await until(() => f.session.qualityMetrics().videoBytes === 30);
+  f.send({
+    videoFrame: {
+      display: 1,
+      vp9s: { frames: [{ data: new Uint8Array(99) }] },
+    },
+  });
+  f.send({ testDelay: { lastDelay: 0, fromClient: false } });
+  await until(() => f.clientMessages.some((m) => !!m.testDelay));
+  expect(f.session.qualityMetrics()).toEqual({
+    videoBytes: 30,
+    delay: undefined,
+  });
+  f.send({ testDelay: { lastDelay: 42, fromClient: false } });
+  await until(() => f.session.qualityMetrics().delay === 42);
+  f.send({ testDelay: { lastDelay: 999, fromClient: true } });
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  expect(f.session.qualityMetrics().delay).toBe(42);
+  f.session.disconnect();
+  expect(f.session.qualityMetrics()).toEqual({
+    videoBytes: 0,
+    delay: undefined,
+  });
+  await f.run;
+});

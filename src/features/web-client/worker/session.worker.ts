@@ -30,6 +30,7 @@ let decoded = 0;
 let generation = 0;
 let videoSupported = false;
 let clipboardAllowed = true;
+let clipboardEnabled = true;
 let keyboardAllowed = true;
 let fileAllowed = true;
 let readOnly = false;
@@ -38,13 +39,18 @@ let imageBusy = false;
 let imageEpoch = 0;
 let clipboardGeneration = 0;
 async function convertImage(clipboard: hbb.IClipboard, outbound: boolean) {
-  if (!clipboardAllowed || imageBusy) return;
+  if (!clipboardAllowed || !clipboardEnabled || imageBusy) return;
   imageBusy = true;
   const current = generation;
   const epoch = imageEpoch;
   try {
     const bytes = await clipboardPng(clipboard);
-    if (current !== generation || epoch !== imageEpoch || !clipboardAllowed)
+    if (
+      current !== generation ||
+      epoch !== imageEpoch ||
+      !clipboardAllowed ||
+      !clipboardEnabled
+    )
       return;
     if (outbound) session.sendImage(bytes);
     else post({ type: 'image', bytes, clipboardGeneration });
@@ -270,7 +276,7 @@ const session = new RemoteSession({
       }
       decoder.decode(video.vp9s);
     } else if (message.clipboard || message.multiClipboards) {
-      if (!clipboardAllowed) return;
+      if (!clipboardAllowed || !clipboardEnabled) return;
       try {
         const clipboard =
           message.clipboard ||
@@ -364,7 +370,11 @@ globalThis.onmessage = (event: MessageEvent<Command>) => {
     fileGeneration = 0;
     connection = { profile: command.profile, id: command.id };
     ++imageEpoch;
+    // 上下文代次属于本次会话；允许 connect 后重发页面的当前设置。
+    clipboardGeneration = 0;
     clipboardAllowed = true;
+    clipboardEnabled = true;
+    session.setClipboardEnabled(true);
     keyboardAllowed = true;
     fileAllowed = true;
     readOnly = false;
@@ -405,17 +415,27 @@ globalThis.onmessage = (event: MessageEvent<Command>) => {
       command.clipboardGeneration <= clipboardGeneration
     )
       return;
+    if (command.enabled !== undefined && typeof command.enabled !== 'boolean')
+      return;
     clipboardGeneration = command.clipboardGeneration;
     ++imageEpoch;
+    paste.cancel();
+    if (command.enabled !== undefined) {
+      clipboardEnabled = command.enabled;
+      session.setClipboardEnabled(clipboardEnabled);
+    }
   } else if (command.type === 'cancel-paste') paste.cancel();
   else if (command.type === 'paste') {
     const current = generation;
     const epoch = displayGeneration;
+    const clipboardEpoch = clipboardGeneration;
     void paste.send(
       command.content,
       () =>
         current === generation &&
         epoch === displayGeneration &&
+        clipboardEpoch === clipboardGeneration &&
+        clipboardEnabled &&
         command.displayGeneration === displayGeneration &&
         desktopConnected &&
         inputReady &&
@@ -438,7 +458,10 @@ globalThis.onmessage = (event: MessageEvent<Command>) => {
   } else if (command.type === 'metrics')
     post({
       type: 'metrics',
+      request: command.request,
       decoded,
+      ...session.qualityMetrics(),
+      displayGeneration,
       presenting,
       pendingFrame: !!pendingFrame,
     });
@@ -500,8 +523,10 @@ globalThis.onmessage = (event: MessageEvent<Command>) => {
     try {
       if (command.text.length > MAX_TEXT_BYTES) throw new Error();
       const clipboard = encodeText(command.text);
-      if (command.type === 'clipboard') session.sendClipboard(clipboard);
-      else if (
+      if (command.type === 'clipboard') {
+        if (clipboardAllowed && clipboardEnabled)
+          session.sendClipboard(clipboard);
+      } else if (
         !readOnly &&
         inputReady &&
         command.displayGeneration === displayGeneration

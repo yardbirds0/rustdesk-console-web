@@ -1,4 +1,16 @@
 export default {
+  'webClient.qualityShow': 'Показать монитор качества',
+  'webClient.qualityMonitor': 'Монитор качества',
+  'webClient.qualityClose': 'Закрыть монитор качества',
+  'webClient.qualityFps': 'Частота кадров',
+  'webClient.qualityBitrate': 'Битрейт видео',
+  'webClient.qualityDelay': 'Время сетевого обмена',
+  'webClient.qualityResolution': 'Разрешение',
+  'webClient.qualityCodec': 'Кодек',
+  'webClient.clipboardSync': 'Синхронизация буфера обмена',
+  'webClient.reverseWheel': 'Обратить прокрутку',
+  'webClient.swapButtons': 'Поменять кнопки мыши',
+  'webClient.swapControlCommand': 'Поменять Ctrl/Command',
   'webClient.legacyEncryption':
     'Удалённое устройство использует устаревший протокол шифрования с известными рисками безопасности. По возможности обновите удалённый клиент.',
   'webClient.open': 'Подключиться в браузере',

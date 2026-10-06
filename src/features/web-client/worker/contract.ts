@@ -13,7 +13,8 @@ import type { hbb } from '../protocol';
 export type SessionCommand =
   | { type: 'connect'; profile: ServerProfile; id: string }
   | { type: 'password'; password: string }
-  | { type: 'disconnect' | 'shutdown' | 'metrics' | 'refresh' }
+  | { type: 'disconnect' | 'shutdown' | 'refresh' }
+  | { type: 'metrics'; request?: number }
   | { type: 'rendered'; displayGeneration: number }
   | { type: 'select-display'; index: number }
   | { type: 'audio'; enabled: boolean }
@@ -22,7 +23,11 @@ export type SessionCommand =
   | { type: 'image'; bytes: Uint8Array }
   | { type: 'paste'; content: { text: string } | { bytes: Uint8Array } }
   | { type: 'cancel-paste' }
-  | { type: 'clipboard-context'; clipboardGeneration: number }
+  | {
+      type: 'clipboard-context';
+      clipboardGeneration: number;
+      enabled?: boolean;
+    }
   | { type: 'files-connect' | 'files-disconnect'; fileGeneration: number }
   | { type: 'files-password'; password: string; fileGeneration: number }
   | { type: 'files-command'; command: FileCommand; fileGeneration: number }
@@ -67,7 +72,11 @@ export type SessionEvent =
     }
   | {
       type: 'metrics';
+      request?: number;
       decoded: number;
+      videoBytes: number;
+      delay?: number;
+      displayGeneration: number;
       presenting: boolean;
       pendingFrame: boolean;
     }

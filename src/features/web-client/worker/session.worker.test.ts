@@ -5,21 +5,24 @@ type SessionEvents = import('../core/session').SessionEvents;
 
 let mockEvents: SessionEvents;
 let mockOutput: (frame: VideoFrame) => void;
-const mockPost = jest.fn<
-  (
-    message: {
-      type: string;
-      generation?: number;
-      [key: string]: unknown;
-    },
-    options?: { transfer: Transferable[] },
-  ) => void
->();
+const mockPost =
+  jest.fn<
+    (
+      message: {
+        type: string;
+        generation?: number;
+        [key: string]: unknown;
+      },
+      options?: { transfer: Transferable[] },
+    ) => void
+  >();
 const mockConnect = jest.fn();
 const mockPassword = jest.fn();
 const mockInput = jest.fn();
 const mockClipboard = jest.fn();
 const mockSendImage = jest.fn();
+const mockSetClipboardEnabled = jest.fn<(enabled: boolean) => boolean>();
+const mockFlushClipboard = jest.fn<() => Promise<void>>();
 const mockImage = jest.fn<(value: unknown) => Promise<Uint8Array>>();
 jest.mock('../clipboard/image', () => ({
   clipboardPng: (value: unknown) => mockImage(value),
@@ -42,6 +45,10 @@ jest.mock('../core/session', () => ({
     authenticationForFiles() {
       return undefined;
     }
+    qualityMetrics() {
+      return { videoBytes: 1200, delay: 42 };
+    }
+    setClipboardEnabled = mockSetClipboardEnabled;
     setReadOnly() {
       return true;
     }
@@ -52,7 +59,7 @@ jest.mock('../core/session', () => ({
     sendInput = mockInput;
     sendClipboard = mockClipboard;
     sendImage = mockSendImage;
-    async flushClipboard() {}
+    flushClipboard = mockFlushClipboard;
     acknowledgeVideo() {}
     refreshVideo() {}
     setAudio() {
@@ -85,6 +92,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockReady.mockResolvedValue(undefined);
   mockSupported.mockResolvedValue(true);
+  mockSetClipboardEnabled.mockReturnValue(true);
+  mockFlushClipboard.mockResolvedValue(undefined);
   Object.assign(globalThis, { postMessage: mockPost, isSecureContext: true });
 });
 afterEach(() => {
@@ -525,4 +534,217 @@ test('Worker 只读挡住绕过 DOM 的输入、文本和粘贴，过期代次�
     input: { keyEvent: { chr: 65, press: true } },
   });
   expect(mockInput).toHaveBeenCalledTimes(1);
+});
+
+test('监测按请求返回真实层级计数，过期会话请求不生效', async () => {
+  await boot();
+  connect(1);
+  send({ type: 'metrics', generation: 0, request: 1 });
+  expect(
+    mockPost.mock.calls.filter(([m]) => m.type === 'metrics'),
+  ).toHaveLength(0);
+  send({ type: 'metrics', generation: 1, request: 2 });
+  expect(mockPost).toHaveBeenCalledWith(
+    expect.objectContaining({
+      type: 'metrics',
+      generation: 1,
+      request: 2,
+      decoded: 0,
+      videoBytes: 1200,
+      delay: 42,
+      displayGeneration: 0,
+    }),
+  );
+});
+
+test('关闭同步取消迟到PNG、阻断双向文字和图片，开启不重放缓存', async () => {
+  await boot();
+  connect(1);
+  let finish!: (bytes: Uint8Array) => void;
+  mockImage.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  mockEvents.message({
+    multiClipboards: {
+      clipboards: [{ format: 22, content: new Uint8Array([1]) }],
+    },
+  } as never);
+  send({
+    type: 'clipboard-context',
+    generation: 1,
+    clipboardGeneration: 2,
+    enabled: false,
+  });
+  finish(new Uint8Array([2]));
+  await Promise.resolve();
+  await Promise.resolve();
+  const inbound = {
+    clipboard: { content: new TextEncoder().encode('blocked'), format: 0 },
+  };
+  mockEvents.message(inbound as never);
+  send({ type: 'clipboard', generation: 1, text: 'blocked' });
+  send({ type: 'image', generation: 1, bytes: new Uint8Array([2]) });
+  expect(mockClipboard).not.toHaveBeenCalled();
+  expect(mockSendImage).not.toHaveBeenCalled();
+  expect(
+    mockPost.mock.calls.filter(
+      ([m]) => m.type === 'clipboard' || m.type === 'image',
+    ),
+  ).toHaveLength(0);
+  send({
+    type: 'clipboard-context',
+    generation: 1,
+    clipboardGeneration: 3,
+    enabled: true,
+  });
+  expect(
+    mockPost.mock.calls.filter(
+      ([m]) => m.type === 'clipboard' || m.type === 'image',
+    ),
+  ).toHaveLength(0);
+  mockEvents.message(inbound as never);
+  expect(mockPost).toHaveBeenCalledWith(
+    expect.objectContaining({
+      type: 'clipboard',
+      clipboardGeneration: 3,
+      text: 'blocked',
+    }),
+  );
+  mockEvents.permissions({
+    keyboard: true,
+    clipboard: false,
+    audio: true,
+    file: true,
+  });
+  send({
+    type: 'clipboard-context',
+    generation: 1,
+    clipboardGeneration: 4,
+    enabled: true,
+  });
+  mockEvents.message(inbound as never);
+  expect(
+    mockPost.mock.calls.filter(([m]) => m.type === 'clipboard'),
+  ).toHaveLength(1);
+});
+
+test('重连接受当前剪贴板关闭设置，历史上下文不能重新开启同步', async () => {
+  await boot();
+  connect(1);
+  send({
+    type: 'clipboard-context',
+    generation: 1,
+    clipboardGeneration: 9,
+    enabled: false,
+  });
+  connect(2);
+  // 页面在 connect 前后重发同一代次，仍须用于初始化新会话。
+  send({
+    type: 'clipboard-context',
+    generation: 2,
+    clipboardGeneration: 9,
+    enabled: false,
+  });
+  expect(mockSetClipboardEnabled).toHaveBeenLastCalledWith(false);
+  send({ type: 'clipboard-context', generation: 2, clipboardGeneration: 10 });
+  send({
+    type: 'clipboard-context',
+    generation: 1,
+    clipboardGeneration: 99,
+    enabled: true,
+  });
+  send({
+    type: 'clipboard-context',
+    generation: 2,
+    clipboardGeneration: 10,
+    enabled: true,
+  });
+  const inbound = {
+    clipboard: { content: new TextEncoder().encode('fresh'), format: 0 },
+  };
+  mockEvents.message(inbound as never);
+  send({ type: 'clipboard', generation: 2, text: 'blocked' });
+  expect(mockClipboard).not.toHaveBeenCalled();
+  expect(
+    mockPost.mock.calls.filter(([m]) => m.type === 'clipboard'),
+  ).toHaveLength(0);
+  expect(mockSetClipboardEnabled).toHaveBeenLastCalledWith(false);
+  send({
+    type: 'clipboard-context',
+    generation: 2,
+    clipboardGeneration: 11,
+    enabled: true,
+  });
+  mockEvents.message(inbound as never);
+  expect(mockPost).toHaveBeenCalledWith(
+    expect.objectContaining({
+      type: 'clipboard',
+      clipboardGeneration: 11,
+      generation: 2,
+    }),
+  );
+});
+
+test('发送缓冲等待期间关闭再开启同步，不发送旧粘贴快捷键', async () => {
+  await boot();
+  jest.useFakeTimers();
+  try {
+    mockClipboard.mockReturnValue(true);
+    mockInput.mockReturnValue(true);
+    let drained: () => void = () => {};
+    mockFlushClipboard.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          drained = resolve;
+        }),
+    );
+    connect(1);
+    mockEvents.state('connected');
+    mockEvents.message({
+      videoFrame: { display: 0, vp9s: { frames: [] } },
+    } as never);
+    mockOutput(frame());
+    const paste = (text: string) =>
+      send({
+        type: 'paste',
+        generation: 1,
+        displayGeneration: 0,
+        content: { text },
+      });
+    paste('old');
+    send({
+      type: 'clipboard-context',
+      generation: 1,
+      clipboardGeneration: 1,
+      enabled: false,
+    });
+    send({
+      type: 'clipboard-context',
+      generation: 1,
+      clipboardGeneration: 2,
+      enabled: true,
+    });
+    drained();
+    await Promise.resolve();
+    await Promise.resolve();
+    jest.advanceTimersByTime(1000);
+    expect(mockClipboard).toHaveBeenCalledTimes(1);
+    expect(mockInput).not.toHaveBeenCalled();
+    paste('new');
+    await Promise.resolve();
+    await Promise.resolve();
+    jest.advanceTimersByTime(300);
+    expect(mockClipboard).toHaveBeenCalledTimes(2);
+    expect(mockInput).toHaveBeenCalledTimes(1);
+    expect(mockInput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keyEvent: expect.objectContaining({ chr: 118, press: true }),
+      }),
+    );
+  } finally {
+    jest.useRealTimers();
+  }
 });

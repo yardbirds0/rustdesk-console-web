@@ -91,6 +91,10 @@ export class RemoteSession {
   private reuse?: FileAuthentication;
   private credentialEpoch = 0;
   private readOnly = false;
+  private clipboardEnabled = true;
+  private videoBytes = 0;
+  private networkDelay: number | undefined;
+  private videoDisplay = 0;
   private sasEnabled = false;
   private attempts = 0;
   private authenticationRequest = 0;
@@ -288,6 +292,7 @@ export class RemoteSession {
               throw new SessionError('protocol');
             clearTimeout(this.authTimer);
             this.displays = response.peerInfo.displays || [];
+            this.videoDisplay = selected;
             this.sasEnabled = !!response.peerInfo.sasEnabled;
             this.challenge = undefined;
             this.clearReuse();
@@ -306,6 +311,12 @@ export class RemoteSession {
               });
           } else throw new SessionError('protocol');
         } else if (message.testDelay && !message.testDelay.fromClient) {
+          // 原生被控端发送上一次往返探测结果（毫秒），0 表示尚无结果。
+          const delay = message.testDelay.lastDelay;
+          this.networkDelay =
+            typeof delay === 'number' && Number.isInteger(delay) && delay > 0
+              ? delay
+              : undefined;
           this.send({ testDelay: message.testDelay });
         } else if (message.misc?.closeReason) {
           throw new SessionError('denied');
@@ -363,6 +374,18 @@ export class RemoteSession {
           )
             for (const release of this.takeInputReleases())
               if (!this.sendConnected(release)) return;
+          if (
+            (message.clipboard || message.multiClipboards) &&
+            (!this.clipboardEnabled || !this.permissions.clipboard)
+          )
+            continue;
+          if (message.videoFrame?.display === this.videoDisplay) {
+            for (const frame of message.videoFrame.vp9s?.frames || []) {
+              const bytes = frame.data?.byteLength ?? 0;
+              if (Number.isSafeInteger(this.videoBytes + bytes))
+                this.videoBytes += bytes;
+            }
+          }
           await this.events.message(message);
         }
       }
@@ -427,8 +450,8 @@ export class RemoteSession {
       first = automatic
         ? this.reuse?.passwordH1.slice()
         : password
-        ? await derivePasswordHash(password, hash.salt)
-        : undefined;
+          ? await derivePasswordHash(password, hash.salt)
+          : undefined;
       response = first
         ? await challengeFromHash(first, hash.challenge)
         : new Uint8Array();
@@ -456,6 +479,9 @@ export class RemoteSession {
               ? undefined
               : {
                   disableAudio: hbb.OptionMessage.BoolOption.Yes,
+                  disableClipboard: this.clipboardEnabled
+                    ? hbb.OptionMessage.BoolOption.No
+                    : hbb.OptionMessage.BoolOption.Yes,
                   enableFileTransfer: hbb.OptionMessage.BoolOption.No,
                   imageQuality: hbb.ImageQuality.Balanced,
                   showRemoteCursor: hbb.OptionMessage.BoolOption.Yes,
@@ -519,8 +545,8 @@ export class RemoteSession {
         ? key.controlKey != null
           ? `control:${key.mode ?? hbb.KeyboardMode.Legacy}:${key.controlKey}`
           : key.chr != null
-          ? `chr:${key.mode ?? hbb.KeyboardMode.Legacy}:${key.chr}`
-          : undefined
+            ? `chr:${key.mode ?? hbb.KeyboardMode.Legacy}:${key.chr}`
+            : undefined
         : undefined;
     if (
       keyId &&
@@ -567,7 +593,8 @@ export class RemoteSession {
     if (
       this.kind !== 'desktop' ||
       this.state !== 'connected' ||
-      !this.permissions.clipboard
+      !this.permissions.clipboard ||
+      !this.clipboardEnabled
     )
       return false;
     return this.sendConnected({ clipboard });
@@ -577,7 +604,8 @@ export class RemoteSession {
     if (
       this.kind !== 'desktop' ||
       this.state !== 'connected' ||
-      !this.permissions.clipboard
+      !this.permissions.clipboard ||
+      !this.clipboardEnabled
     )
       return false;
     return this.sendConnected({
@@ -593,7 +621,8 @@ export class RemoteSession {
       !transport ||
       this.kind !== 'desktop' ||
       this.state !== 'connected' ||
-      !this.permissions.clipboard
+      !this.permissions.clipboard ||
+      !this.clipboardEnabled
     )
       throw new SessionError('denied');
     // 等待本地发送队列清空，不将其当作远端系统写入确认。
@@ -601,7 +630,8 @@ export class RemoteSession {
     if (
       transport !== this.transport ||
       this.state !== 'connected' ||
-      !this.permissions.clipboard
+      !this.permissions.clipboard ||
+      !this.clipboardEnabled
     )
       throw new SessionError('cancelled');
   }
@@ -617,10 +647,30 @@ export class RemoteSession {
       for (const release of this.takeInputReleases())
         if (!this.sendConnected(release)) return false;
     }
+    this.videoDisplay = index;
     return (
       this.sendConnected({ misc: { switchDisplay: { display: index } } }) &&
       this.sendConnected({ misc: { captureDisplays: { set: [index] } } })
     );
+  }
+
+  qualityMetrics() {
+    return { videoBytes: this.videoBytes, delay: this.networkDelay };
+  }
+
+  setClipboardEnabled(enabled: boolean) {
+    if (this.kind !== 'desktop' || typeof enabled !== 'boolean') return false;
+    this.clipboardEnabled = enabled;
+    if (this.state !== 'connected') return true;
+    return this.sendConnected({
+      misc: {
+        option: {
+          disableClipboard: enabled
+            ? hbb.OptionMessage.BoolOption.No
+            : hbb.OptionMessage.BoolOption.Yes,
+        },
+      },
+    });
   }
 
   setAudio(enabled: boolean) {
@@ -754,6 +804,9 @@ export class RemoteSession {
     this.sasEnabled = false;
     this.targetId = '';
     this.displays = [];
+    this.videoBytes = 0;
+    this.networkDelay = undefined;
+    this.videoDisplay = 0;
     this.state = 'closed';
     this.events.security(undefined);
   }
