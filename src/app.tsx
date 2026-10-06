@@ -8,6 +8,7 @@ import {
   AvatarDropdown,
   AvatarName,
   Footer,
+  HeaderUpdateEntry,
   SelectLang,
   ThemeToggle,
 } from '@/components';
@@ -159,6 +160,7 @@ export const layout: RunTimeLayoutConfig = ({
     actionsRender: () => [
       <ThemeToggle key="ThemeToggle" />,
       <SelectLang key="SelectLang" />,
+      <HeaderUpdateEntry key="HeaderUpdateEntry" />,
     ],
     avatarProps: {
       src: initialState?.currentUser?.avatar,
