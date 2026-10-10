@@ -228,7 +228,7 @@ export function useSystemUpdate(open: boolean) {
             ? reason
             : new SystemUpdateError('INVALID_RESPONSE'),
         );
-        if (++failures < 10) timer = setTimeout(verify, pollingDelay(failures));
+        if (failures < 9) timer = setTimeout(verify, pollingDelay(failures++));
       }
     };
     void verify();
