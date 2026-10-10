@@ -4,7 +4,10 @@ import { Tooltip } from 'antd';
 import React, { useEffect, useRef, useState } from 'react';
 import UpdateCheckModal from '@/components/UpdateCheckModal';
 import { useSystemUpdate } from '@/components/UpdateCheckModal/useSystemUpdate';
-import { readSavedUpdate } from '@/services/rustdesk-console/systemUpdate';
+import {
+  isTerminalJob,
+  readSavedUpdate,
+} from '@/services/rustdesk-console/systemUpdate';
 import { getToken } from '@/utils/auth';
 
 export default function HeaderUpdateEntry() {
@@ -17,11 +20,14 @@ export default function HeaderUpdateEntry() {
   const update = useSystemUpdate(enabled);
 
   useEffect(() => {
-    if (!autoChecked.current && enabled) {
-      autoChecked.current = true;
-      if (readSavedUpdate()) setModalOpen(true);
-    }
-  }, [enabled]);
+    if (autoChecked.current || !enabled || update.state === 'checking') return;
+    autoChecked.current = true;
+    if (
+      readSavedUpdate()?.submission ||
+      (update.job && !isTerminalJob(update.job))
+    )
+      setModalOpen(true);
+  }, [enabled, update.state, update.job]);
 
   if (!access.isSuperAdmin) return null;
   const active = Boolean(
